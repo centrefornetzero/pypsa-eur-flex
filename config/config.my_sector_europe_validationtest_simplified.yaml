@@ -36,7 +36,7 @@ co2_budget:
   2035: 0.720 #0.250
   2040: 0.720 #0.100 # 90% by 2040
   2045: 0.720 #0.050
-  2050: 0.720 #0.000 
+  2050: 0.720 #0.000 to not force no carbon emissions during the overnight scenario 
 
 
 electricity:
@@ -44,7 +44,7 @@ electricity:
   co2limit: 100.e+6
 
   extendable_carriers:
-    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float] #, OCGT, CCGT, coal, lignite, geothermal, biomass, oil]
     StorageUnit: [battery]
     Store: [battery, H2] #probably want to give the model the option to add more than just h2 stores
     Link: [H2 pipeline] #probably want to give the model the option to add more than just h2 pipelines 
@@ -103,7 +103,8 @@ pypsa_eur: #I think I need to add in conventional generators and buses into the 
   - lignite
   - coal 
   #- import export tracker
-  - oil 
+  - oil
+  - biomass 
   Link:
   - DC
   ## commenting these out to see if it will allow pypsa eur run on April 25 to bring back the emissions for these generators
@@ -112,7 +113,7 @@ pypsa_eur: #I think I need to add in conventional generators and buses into the 
   - lignite
   - biomass
   - oil
-  #- coal 
+  - coal 
   Generator:
   - onwind
   - offwind-ac
@@ -122,7 +123,8 @@ pypsa_eur: #I think I need to add in conventional generators and buses into the 
   - solar
   - ror
   - nuclear
-  - coal
+  #- biomass
+  #- coal
   #- OCGT
   #- CCGT
   #- lignite
@@ -149,7 +151,7 @@ costs:
     lifetime: 25
     "CO2 intensity": 0 #need to input a co2 intensity for all values that are not present so that they can be seen by global constraints
     "discount rate": 0.07
-  overwrites: {co2_emissions : {oil : 0.2571, gas : 0.198 }}  #to have oil register with a c02 intensity, have {"CO2 intensity" : {oil : 0.2571, gas : 0.198 }} # tCO2/MWh_th
+  overwrites: {} #to have oil register with a c02 intensity, have {"CO2 intensity" : {oil : 0.2571, gas : 0.198 }} # tCO2/MWh_th
   capital_cost: #added because there was geothermal produced in Italy even though there was a capital cost that should have been included. 
     geothermal: 6983145.710599946  #added because there was geothermal produced in Italy even though there was a capital cost that should have been included. 
   marginal_cost:
@@ -193,8 +195,6 @@ clustering: ## From April 29 Update #ended up reverting to January update
 sector:
   transport: true
   heating: true
-  gas_network: true #add existing gas network 
-  H2_retrofit: true
   biomass: true
   industry: true #this doesn't work for lack of fischer-tropsch buses #that is solved if you put oil in bus: and link: under pypsa_eur
   agriculture: true #doesn't work for lack of EU agricultural machinery oil bus #this is solved if you putp oil in bus: and link" under pypsa_eur 
@@ -212,14 +212,33 @@ sector:
     lignite: lignite 
     coal: coal 
     CCGT: gas
-  #co2_sequestration_potential: #lowered sequestion potential heavily from default 
-  #  2020: 50
-  #  2025: 100
-  #  2030: 100
-  #  2035: 150
-  #  2040: 150
-  #  2045: 150
-  #  2050: 150
+  #flex enablers, all turned off for most simplifed version
+  bev_dsm: false
+  v2g: false
+    #keeping defaults for shipping moving to methanol 
+  tes: false #no thermal storage for heating (not necessairly true, but paring back everything)
+  boilers: true #gas heating, yeah that's what is happening now
+  resistive_heaters: true #resistive heating using electricity, yes
+  solar_thermal: true
+  methanation: false #no methanation for now 
+  coal_cc: false
+  dac: false #true, no direct air capture 
+  co2_vent: false
+  central_heat_vent: true
+  allam_cycle_gas: false
+  hydrogen_fuel_cell: true
+  hydrogen_turbine: false
+  SMR: true
+  SMR_cc: true
+  gas_network: true #add existing gas network 
+  H2_retrofit: false #for simplified version, don't need hydrogen retrofit, but the model can build hydrogen completely from new 
+  #The rest of the defaults I agree with 
+  chp:
+    enable: false #true
+    fuel:
+    - solid biomass # For solid biomass, CHP with and without CC are added
+    - gas # For all other fuels the same techno economic data from gas CHP is taken
+  electricity_distribution_grid: true
 
 
 lines:
@@ -230,6 +249,9 @@ lines:
 
 
 solving:
+  options:
+    curtailment_mode: false
   solver:
     name: gurobi
     options: gurobi-default
+  

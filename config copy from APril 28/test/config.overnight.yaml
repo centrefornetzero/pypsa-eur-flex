@@ -1,0 +1,109 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+tutorial: true
+
+run:
+  name: "test-sector-overnight"
+  disable_progressbar: false
+  shared_resources:
+    policy: "test"
+  shared_cutouts: true
+
+
+scenario:
+  clusters:
+  - 20
+  sector_opts:
+  - ''
+  planning_horizons:
+  - 2030
+
+countries: ['DE']
+
+snapshots:
+  start: "2023-01-01"
+  end: "2024-01-01"
+  inclusive: 'left'
+
+electricity:
+  co2limit_enable: false 
+
+  extendable_carriers:
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT, geothermal, biomass] #allowed to build up new capacity across all types of carriers, but conventional carriers can only add capacity to existing locations
+    StorageUnit: [battery]
+    Store: [battery, H2] #probably want to give the model the option to add more than just h2 stores
+    Link: [H2 pipeline] #probably want to give the model the option to add more than just h2 pipelines, or alternatively, no H2 pipelines
+
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
+  conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+  powerplants_filter: (DateOut >= 2022 or DateOut != DateOut)
+
+atlite:
+  default_cutout: europe-2023-sarah3-era5
+  cutouts:
+    europe-2023-sarah3-era5:
+      module: [sarah, era5]
+      x: [5., 16.]
+      y: [47., 56.]
+      time: ["2023", "2023"]
+
+renewable:
+  onwind:
+    cutout: europe-2023-sarah3-era5
+  offwind-ac:
+    cutout: europe-2023-sarah3-era5
+    max_depth: false
+  offwind-dc:
+    cutout: europe-2023-sarah3-era5
+    max_depth: false
+  offwind-float:
+    cutout: europe-2023-sarah3-era5
+    max_depth: false
+    min_depth: false
+  solar:
+    cutout: europe-2023-sarah3-era5
+  solar-hsat:
+    cutout: europe-2023-sarah3-era5
+  hydro:
+    cutout: europe-2023-sarah3-era5
+
+
+clustering:
+  temporal:
+    resolution_elec: false 
+    resolution_sector: 12h
+
+
+lines:
+  dynamic_line_rating:
+    activate: false
+    cutout: europe-2023-sarah3-era5
+    max_line_rating: 1.3
+
+sector:
+  gas_network: true
+  H2_retrofit: true
+
+industry:
+  HVC_environment_sequestration_fraction: 0.5
+  waste_to_energy: true
+  waste_to_energy_cc: true
+
+solving:
+  solver:
+    name: gurobi
+    options: gurobi-default
+
+plotting:
+  map:
+    boundaries:
+  eu_node_location:
+    x: -5.5
+    y: 46.
+  costs_max: 1000
+  costs_threshold: 0.0000001
+  energy_max:
+  energy_min:
+  energy_threshold: 0.000001

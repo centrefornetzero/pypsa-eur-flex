@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+logging:
+  level: INFO
+  format: '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+
+run:
+  prefix: validation
+
+private:
+  keys:
+    entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
+
+clustering:
+  temporal:
+    resolution_elec: 6H
+    resolution_sector: 6H

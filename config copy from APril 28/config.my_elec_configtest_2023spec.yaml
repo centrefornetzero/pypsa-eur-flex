@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+#Trying to get PypSA to solve ANYTHING -- this is with the mode bare bones of changes, just countries, snapshots, and cutout 
+
+
+
+run:
+  name: "" # use this to keep track of runs with different settings -- but if I change the name it doesn't run? 
+  disable_progressbar: false
+
+scenario:
+  clusters:
+  - 20
+  opts:
+  - ''
+
+countries: ['DE']
+
+snapshots:
+  start: "2023-01-01"
+  end: "2024-01-01"
+  inclusive: 'left'
+
+
+electricity:
+  co2limit_enable: true
+  co2limit: 205.0e+6
+
+  extendable_carriers:
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT, geothermal, biomass] #allowed to build up new capacity across all types of carriers, but conventional carriers can only add capacity to existing locations
+    StorageUnit: [battery]
+    Store: [battery, H2] #probably want to give the model the option to add more than just h2 stores
+    Link: [H2 pipeline] #probably want to give the model the option to add more than just h2 pipelines, or alternatively, no H2 pipelines
+
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro] # removing hydro because less than a full year, hydro]
+  conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+  powerplants_filter: (DateOut >= 2022 or DateOut != DateOut)
+
+
+
+atlite:
+  default_cutout: europe-2023-sarah3-era5
+  cutouts:
+    europe-2023-sarah3-era5:
+      module: [sarah, era5]
+      x: [5., 16.]
+      y: [47., 56.]
+      time: ["2023", "2023"]
+
+renewable:
+  onwind:
+    cutout: europe-2023-sarah3-era5
+  offwind-ac:
+    cutout: europe-2023-sarah3-era5
+    max_depth: false
+  offwind-dc:
+    cutout: europe-2023-sarah3-era5
+    max_depth: false
+  offwind-float:
+    cutout: europe-2023-sarah3-era5
+    max_depth: false
+    min_depth: false
+  solar:
+    cutout: europe-2023-sarah3-era5
+  solar-hsat:
+    cutout: europe-2023-sarah3-era5
+  hydro:
+    cutout: europe-2023-sarah3-era5
+
+conventional:
+  unit_commitment: false
+  dynamic_fuel_price: false
+  nuclear:
+    p_min_pu: 0.85
+    p_max_pu: 0.92
+
+
+
+clustering:
+  exclude_carriers: ["OCGT", "offwind-ac", "coal"]
+  temporal:
+    resolution_elec: 24h
+    
+
+lines:
+  dynamic_line_rating:
+    activate: false
+    cutout: europe-2023-sarah3-era5
+    max_line_rating: 1.3
+
+
+solving:
+  solver:
+    name: highs
+    options: highs-simplex

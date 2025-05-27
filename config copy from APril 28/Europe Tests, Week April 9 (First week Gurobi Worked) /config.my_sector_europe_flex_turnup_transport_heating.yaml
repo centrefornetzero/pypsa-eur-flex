@@ -1,0 +1,151 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+#Trying to get PypSA to solve ANYTHING -- this is with the mode bare bones of changes, just countries, snapshots, and cutout 
+
+##Turning up all flexibility enablers to the maximum on land transport and heating 
+
+private:
+  keys:
+    entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
+
+
+run:
+  name: "" # use this to keep track of runs with different settings -- but if I change the name it doesn't run? 
+  disable_progressbar: false
+
+scenario:
+  clusters:
+  - 39
+  opts:
+  - ''
+
+countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK', 'XK']
+
+snapshots:
+  start: "2019-01-01"
+  end: "2020-01-01"
+  inclusive: 'left'
+
+
+electricity:
+  co2limit_enable: false
+  co2limit: 100.e+6
+
+  extendable_carriers:
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+    StorageUnit: [battery]
+    Store: [battery, H2] #probably want to give the model the option to add more than just h2 stores
+    Link: [H2 pipeline] #probably want to give the model the option to add more than just h2 pipelines 
+
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
+  conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut)
+
+atlite:
+  default_cutout: europe-2019-sarah3-era5
+  cutouts:
+    europe-2019-sarah3-era5:
+      module: era5
+      x: [-12., 42.]
+      y: [33., 72.]
+      dx: 0.3
+      dy: 0.3
+      time: ["2019", "2019"]
+
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5
+  offwind-ac:
+    cutout: europe-2019-sarah3-era5
+    max_depth: false
+  offwind-dc:
+    cutout: europe-2019-sarah3-era5
+    max_depth: false
+  offwind-float:
+    cutout: europe-2019-sarah3-era5
+    max_depth: false
+    min_depth: false
+  solar:
+    cutout: europe-2019-sarah3-era5
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5
+  hydro:
+    cutout: europe-2019-sarah3-era5
+
+# docs
+# TODO: PyPSA-Eur merge issue in prepare_sector_network.py
+# regulate what components with which carriers are kept from PyPSA-Eur;
+# some technologies are removed because they are implemented differently
+# (e.g. battery or H2 storage) or have different year-dependent costs
+# in PyPSA-Eur-Sec
+pypsa_eur: #I think I need to add in conventional generators and buses into the file here, because right now the electric component carriers 
+#are only the carriers that are given here, I think what is happening is that pypsa-eur when merging with the sector additions gets trimmed, and it's pruning too much
+
+  Bus:
+  - AC
+  - gas
+  - coal
+  - lignite
+  - import export tracker
+  Link:
+  - DC
+  - coal
+  - OCGT
+  - CCGT
+  - lignite
+  - biomass
+  Generator:
+  - onwind
+  - offwind-ac
+  - offwind-dc
+  - offwind-float
+  - solar-hsat
+  - solar
+  - ror
+  - nuclear
+  - coal
+  - OCGT
+  - CCGT
+  - lignite
+  - biomass
+  - geothermal
+  - oil 
+  StorageUnit:
+  - PHS
+  - hydro
+  Store: []
+
+clustering:
+  exclude_carriers: ["OCGT", "offwind-ac", "coal"]
+  temporal:
+    resolution_elec: false #3h according to the configuration file, this options should only be used with electric networks, not sector coupled networks 
+    resolution_sector: 6H
+
+sector:
+  gas_network: true
+  H2_retrofit: true
+  biomass: false
+  industry: false
+  agriculture: false
+  fossil_fuels: true
+  shipping: false
+  aviation: false
+  #bev_dsm_restriction_value: 0 # was 0.75, set to 0 for no restriction on BEV DSM
+  #bev_dsm_availability: 1 #0.5 turning from 0.5 to 1 (which I think is all)
+  #tes_tau:
+  #  decentral: 6 #was 3, doubling time constant in decentralized thermal energy storage #days 
+  #  central: 280 #was 180, adding more time to extend time constant for centralized energy storage. 
+
+
+lines:
+  dynamic_line_rating:
+    activate: false
+    cutout: europe-2019-sarah3-era5
+    max_line_rating: 1.3
+
+
+solving:
+  solver:
+    name: gurobi
+    options: gurobi-default

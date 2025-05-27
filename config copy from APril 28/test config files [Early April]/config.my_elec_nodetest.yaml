@@ -1,0 +1,83 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+#Trying to get PypSA to solve ANYTHING -- this is with the mode bare bones of changes, just countries, snapshots, and cutout 
+
+
+
+run:
+  name: "" # use this to keep track of runs with different settings -- but if I change the name it doesn't run? 
+  disable_progressbar: true
+
+scenario:
+  clusters:
+  - 20
+  opts:
+  - ''
+
+countries: ['DE']
+
+snapshots:
+  start: "2020-01-01"
+  end: "2021-01-01"
+  inclusive: 'left'
+
+
+electricity:
+  co2limit_enable: false
+  co2limit: 100.e+6
+
+  extendable_carriers:
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT]
+    StorageUnit: [battery]
+    Store: [battery, H2] #probably want to give the model the option to add more than just h2 stores
+    Link: [H2 pipeline] #probably want to give the model the option to add more than just h2 pipelines 
+
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
+  conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+  
+
+atlite:
+  default_cutout: europe-2020-sarah3-era5
+  cutouts:
+    europe-2020-sarah3-era5:
+      module: [sarah, era5]
+      x: [5., 16.]
+      y: [47., 56.]
+      time: ["2020", "2020"]
+
+renewable:
+  onwind:
+    cutout: europe-2020-sarah3-era5
+  offwind-ac:
+    cutout: europe-2020-sarah3-era5
+    max_depth: false
+  offwind-dc:
+    cutout: europe-2020-sarah3-era5
+    max_depth: false
+  offwind-float:
+    cutout: europe-2020-sarah3-era5
+    max_depth: false
+    min_depth: false
+  solar:
+    cutout: europe-2020-sarah3-era5
+  solar-hsat:
+    cutout: europe-2020-sarah3-era5
+
+
+clustering:
+  exclude_carriers: ["OCGT", "offwind-ac", "coal"]
+  temporal:
+    resolution_elec: 24h
+
+lines:
+  dynamic_line_rating:
+    activate: true
+    cutout: europe-2020-sarah3-era5
+    max_line_rating: 1.3
+
+
+solving:
+  solver:
+    name: highs
+    options: highs-simplex

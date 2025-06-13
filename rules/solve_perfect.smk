@@ -113,7 +113,7 @@ rule solve_sector_network_perfect:
     resources:
         mem_mb=config_provider("solving", "mem"),
     shadow:
-        "shallow"
+        shadow_config
     log:
         solver=RESULTS
         + "logs/base_s_{clusters}_{opts}_{sector_opts}_brownfield_all_years_solver.log",
@@ -145,7 +145,7 @@ def input_networks_make_summary_perfect(w):
 rule make_summary_perfect:
     input:
         unpack(input_networks_make_summary_perfect),
-        costs=resources("costs_2020.csv"),
+        costs=resources("costs_2030.csv"),
     output:
         nodal_costs=RESULTS + "csvs/nodal_costs.csv",
         nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",

@@ -1,0 +1,262 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+#Trying to get PypSA to solve ANYTHING -- this is with the mode bare bones of changes, just countries, snapshots, and cutout 
+
+##Just electric sector development
+
+
+private:
+  keys:
+    entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
+
+
+run:
+  name: "" # use this to keep track of runs with different settings -- but if I change the name it doesn't run? 
+  disable_progressbar: false
+
+scenario:
+  clusters:
+  - 39
+  opts:
+  - ''
+  planning_horizons:
+  - 2025
+  - 2030
+  - 2040
+  - 2050
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
+foresight: myopic
+
+countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK', 'XK']
+
+snapshots:
+  start: "2019-01-01"
+  end: "2020-01-01"
+  inclusive: 'left'
+
+
+co2_budget:
+  2020: 0.720 # 0.720 #average emissions of 2019 to 2021 relative to 1990, CO2 excl LULUCF, EEA data, European Environment Agency. (2023a). Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
+  2025: 0.648 # With additional measures (WAM) projection, CO2 excl LULUCF, European Environment Agency. (2023e). Member States’ greenhouse gas (GHG) emission projections 2023. https://www.eea.europa.eu/en/datahub/datahubitem-view/4b8d94a4-aed7-4e67-a54c-0623a50f48e8
+  2030: 0.450 # 55% reduction by 2030 (Ff55)
+  2035: 0.250
+  2040: 0.100 # 90% by 2040
+  2045: 0.050
+  2050: 0.050 #0.00, but didn't solve when 0.00, seing if it's the carbon budget [May 26, 2025]
+
+
+electricity:
+  co2limit_enable: false 
+  co2limit: 100.e+6
+
+  extendable_carriers:
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float] #, OCGT, CCGT, coal, lignite, geothermal, biomass, oil]
+    StorageUnit: [battery]
+    Store: [battery, H2] #probably want to give the model the option to add more than just h2 stores
+    Link: [H2 pipeline] #probably want to give the model the option to add more than just h2 pipelines 
+
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
+  conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut)
+
+  transmission_limit: vopt #v1.0  #transmission is limited in volume to be a factor of 1.0 times the current transmission volume 
+
+atlite:
+  cutout_directory: cutouts
+  default_cutout: europe-2019-sarah3-era5
+  nprocesses: 4 
+  cutouts:
+    europe-2019-sarah3-era5:
+      module: [sarah, era5] # in priority order
+      x: [-12., 42.]
+      y: [33., 72.]
+      dx: 0.3
+      dy: 0.3
+      time: ["2019", "2019"]
+
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5
+  offwind-ac:
+    cutout: europe-2019-sarah3-era5
+    max_depth: false
+  offwind-dc:
+    cutout: europe-2019-sarah3-era5
+    max_depth: false
+  offwind-float:
+    cutout: europe-2019-sarah3-era5
+    max_depth: false
+    min_depth: false
+  solar:
+    cutout: europe-2019-sarah3-era5
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5
+  hydro:
+    cutout: europe-2019-sarah3-era5
+
+# docs
+# TODO: PyPSA-Eur merge issue in prepare_sector_network.py
+# regulate what components with which carriers are kept from PyPSA-Eur;
+# some technologies are removed because they are implemented differently
+# (e.g. battery or H2 storage) or have different year-dependent costs
+# in PyPSA-Eur-Sec
+pypsa_eur: #I think I need to add in conventional generators and buses into the file here, because right now the electric component carriers 
+#are only the carriers that are given here, I think what is happening is that pypsa-eur when merging with the sector additions gets trimmed, and it's pruning too much
+
+  Bus:
+  - AC  
+  - gas
+  - lignite
+  - coal 
+  #- import export tracker
+  - oil
+  - biomass 
+  Link:
+  - DC
+  ## commenting these out to see if it will allow pypsa eur run on April 25 to bring back the emissions for these generators
+  - OCGT
+  - CCGT
+  - lignite
+  - biomass
+  - oil
+  - coal 
+  Generator:
+  - onwind
+  - offwind-ac
+  - offwind-dc
+  - offwind-float
+  - solar-hsat
+  - solar
+  - ror
+  - nuclear
+  #- biomass
+  #- coal
+  #- OCGT
+  #- CCGT
+  #- lignite
+  #- solid biomass #because this is included in sector, does it need to be included here? #including this didn't make solid biomass have a carbon value, also it's still included in links, my guess
+  - geothermal 
+  #- oil #once removed oil because agriculture and industry were not solving as sectors, kept saying that the spatial.nodes.oil bus wasn't created in scripts/prepare_sector_network.py, so maybe it's because oil should be considered a carrier not a generator
+  #led to biomass being used everywhere??? [Friday April 25], and a huge huge overestimation of generation 
+  StorageUnit:
+  - PHS
+  - hydro
+  Store: []
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
+costs:
+  year: 2030
+  version: v0.10.1
+  social_discountrate: 0.02
+  fill_values:
+    FOM: 0
+    VOM: 0
+    efficiency: 1
+    fuel: 0
+    investment: 0
+    lifetime: 25
+    "CO2 intensity": 0 #need to input a co2 intensity for all values that are not present so that they can be seen by global constraints
+    "discount rate": 0.07
+  overwrites: {}  #to have oil register with a c02 intensity, have {"CO2 intensity" : {oil : 0.2571, gas : 0.198 }} # tCO2/MWh_th
+  capital_cost: #added because there was geothermal produced in Italy even though there was a capital cost that should have been included. 
+    geothermal: 6983145.710599946  #added because there was geothermal produced in Italy even though there was a capital cost that should have been included. 
+  marginal_cost:
+    solar: 0.01
+    onwind: 0.015
+    offwind: 0.015
+    hydro: 0.
+    H2: 0.
+    electrolysis: 0.
+    fuel cell: 0.
+    battery: 0.
+    battery inverter: 0.
+  emission_prices:
+    enable: false
+    co2: 0.
+    co2_monthly_prices: false
+
+clustering: ## From April 29 Update #ended up reverting to January update 
+  focus_weights: false
+  simplify_network:
+    to_substations: false
+    remove_stubs: true
+    remove_stubs_across_borders: false
+  cluster_network:
+    algorithm: kmeans
+    hac_features:
+    - wnd100m
+    - influx_direct
+  exclude_carriers: []
+  consider_efficiency_classes: false
+  aggregation_strategies:
+    generators:
+      committable: any
+      ramp_limit_up: max
+      ramp_limit_down: max
+  temporal:
+    resolution_elec: false # should only be used with electric networks, not sector coupled networks 
+    resolution_sector: 6H 
+
+
+sector:
+  transport: true
+  heating: true
+  biomass: true
+  industry: true #this doesn't work for lack of fischer-tropsch buses #that is solved if you put oil in bus: and link: under pypsa_eur
+  agriculture: true #doesn't work for lack of EU agricultural machinery oil bus #this is solved if you putp oil in bus: and link" under pypsa_eur 
+  fossil_fuels: true
+  shipping: true
+  aviation: true
+  regional_oil_demand: false #because both industry and agriculture wouldn't solve because it couldn't find the EU oil bus, does this help? NO this made it worse
+  #bev_dsm_restriction_value: 0 # was 0.75, set to 0 for no restriction on BEV DSM
+  #bev_dsm_availability: 1 #0.5 turning from 0.5 to 1 (which I think is all)
+  #tes_tau:
+  #  decentral: 6 #was 3, doubling time constant in decentralized thermal energy storage #days 
+  #  central: 280 #was 180, adding more time to extend time constant for centralized energy storage.
+  conventional_generation:
+    OCGT: gas
+    lignite: lignite 
+    coal: coal 
+    CCGT: gas
+  #flex enablers, all turned off for most simplifed version
+  bev_dsm: false
+  v2g: false
+    #keeping defaults for shipping moving to methanol 
+  tes: false #no thermal storage for heating (not necessairly true, but paring back everything)
+  boilers: true #gas heating, yeah that's what is happening now
+  resistive_heaters: true #resistive heating using electricity, yes
+  solar_thermal: true
+  methanation: false #no methanation for now 
+  coal_cc: false
+  dac: false #true, no direct air capture 
+  co2_vent: false
+  central_heat_vent: true
+  allam_cycle_gas: false
+  hydrogen_fuel_cell: true
+  hydrogen_turbine: false
+  SMR: true
+  SMR_cc: true
+  gas_network: true #add existing gas network 
+  H2_retrofit: false #for simplified version, don't need hydrogen retrofit, but the model can build hydrogen completely from new 
+  #The rest of the defaults I agree with 
+  chp:
+    enable: false #true
+    fuel:
+    - solid biomass # For solid biomass, CHP with and without CC are added
+    - gas # For all other fuels the same techno economic data from gas CHP is taken
+  electricity_distribution_grid: true
+
+
+lines:
+  dynamic_line_rating:
+    activate: false
+    cutout: europe-2019-sarah3-era5
+    max_line_rating: 1.3
+
+
+solving:
+  solver:
+    name: gurobi
+    options: gurobi-default

@@ -12,7 +12,7 @@ logging:
 
 private:
   keys:
-    entsoe_api:
+    entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2 
 
 remote:
   ssh: ""
@@ -57,8 +57,8 @@ countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'F
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
 snapshots:
-  start: "2013-01-01"
-  end: "2014-01-01"
+  start: "2019-01-01"
+  end: "2020-01-01"
   inclusive: 'left'
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable

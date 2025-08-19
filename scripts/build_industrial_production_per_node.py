@@ -17,8 +17,7 @@ import logging
 from itertools import product
 
 import pandas as pd
-
-from scripts._helpers import configure_logging, set_scenario_config
+from _helpers import configure_logging, set_scenario_config
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ def build_nodal_industrial_production():
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_industrial_production_per_node", clusters=48)
     configure_logging(snakemake)

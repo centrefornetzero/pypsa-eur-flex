@@ -8,16 +8,13 @@ Distribute country-level energy demands by population.
 import logging
 
 import pandas as pd
-
-from scripts._helpers import configure_logging, get_snapshots, set_scenario_config
-
-idx = pd.IndexSlice
+from _helpers import configure_logging, set_scenario_config
 
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_population_weighted_energy_totals",
@@ -30,17 +27,16 @@ if __name__ == "__main__":
     config = snakemake.config["energy"]
 
     if snakemake.wildcards.kind == "heat":
-        snapshots = get_snapshots(
-            snakemake.params.snapshots, snakemake.params.drop_leap_day
-        )
-        data_years = snapshots.year.unique()
+        years = pd.date_range(freq="h", **snakemake.params.snapshots).year.unique()
+        assert len(years) == 1, "Currently only works for single year."
+        data_year = years[0]
     else:
-        data_years = int(config["energy_totals_year"])
+        data_year = int(config["energy_totals_year"])
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
 
     totals = pd.read_csv(snakemake.input.energy_totals, index_col=[0, 1])
-    totals = totals.loc[idx[:, data_years], :].groupby("country").mean()
+    totals = totals.xs(data_year, level="year")
 
     nodal_totals = totals.loc[pop_layout.ct].fillna(0.0)
     nodal_totals.index = pop_layout.index

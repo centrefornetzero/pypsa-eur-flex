@@ -12,11 +12,9 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 import pypsa
+from _helpers import configure_logging, retry, set_scenario_config
+from plot_power_network import assign_location, load_projection
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
-
-from scripts._helpers import configure_logging, retry, set_scenario_config
-from scripts.make_summary import assign_locations
-from scripts.plot_power_network import load_projection
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +47,7 @@ def plot_h2_map(n, regions):
     # if "H2 pipeline" not in n.links.carrier.unique():
     #     return
 
-    assign_locations(n)
+    assign_location(n)
 
     h2_storage = n.stores.query("carrier == 'H2'")
     regions["H2"] = (
@@ -255,12 +253,13 @@ def plot_h2_map(n, regions):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "plot_hydrogen_network",
             opts="",
             clusters="37",
+            ll="v1.0",
             sector_opts="4380H-T-H-B-I-A-dist1",
         )
 

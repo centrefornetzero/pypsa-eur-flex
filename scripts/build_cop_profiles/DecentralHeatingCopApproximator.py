@@ -7,8 +7,7 @@ from typing import Union
 
 import numpy as np
 import xarray as xr
-
-from scripts.build_cop_profiles.BaseCopApproximator import BaseCopApproximator
+from BaseCopApproximator import BaseCopApproximator
 
 
 class DecentralHeatingCopApproximator(BaseCopApproximator):

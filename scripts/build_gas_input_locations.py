@@ -11,9 +11,8 @@ import logging
 
 import geopandas as gpd
 import pandas as pd
-
-from scripts._helpers import configure_logging, set_scenario_config
-from scripts.cluster_gas_network import load_bus_regions
+from _helpers import configure_logging, set_scenario_config
+from cluster_gas_network import load_bus_regions
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,6 @@ def read_scigrid_gas(fn):
     expanded_param = df.param.apply(json.loads).apply(pd.Series)
     df = pd.concat([df, expanded_param], axis=1)
     df.drop(["param", "uncertainty", "method"], axis=1, inplace=True)
-    df = df.loc[:, ~df.columns.duplicated()]  # duplicated country_code column
     return df
 
 
@@ -105,15 +103,9 @@ def build_gas_input_locations(gem_fn, entry_fn, sto_fn, countries):
     entry = read_scigrid_gas(entry_fn)
     entry["from_country"] = entry.from_country.str.rstrip()
     entry = entry.loc[
-        (
-            ~(entry.from_country.isin(countries) & entry.to_country.isin(countries))
-            & (entry.from_country.isin(countries) | entry.to_country.isin(countries))
-            & ~entry.name.str.contains("Tegelen")  # only take non-EU entries
-            & ~entry.from_country.isin(
-                ["RU", "BY"]
-            )  # exclude entries from Russia and Belarus
-            | (entry.from_country == "NO")
-        )  # malformed datapoint
+        ~(entry.from_country.isin(countries) & entry.to_country.isin(countries))
+        & ~entry.name.str.contains("Tegelen")  # only take non-EU entries
+        | (entry.from_country == "NO")  # malformed datapoint  # entries from NO to GB
     ].copy()
 
     sto = read_scigrid_gas(sto_fn)
@@ -144,11 +136,11 @@ def build_gas_input_locations(gem_fn, entry_fn, sto_fn, countries):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_gas_input_locations",
-            clusters="10",
+            clusters="128",
         )
 
     configure_logging(snakemake)

@@ -13,16 +13,13 @@ from functools import partial, wraps
 from os.path import exists
 from pathlib import Path
 from shutil import copyfile
-from tempfile import NamedTemporaryFile
-from typing import Callable, Union
+from typing import Callable
 
-import atlite
 import fiona
 import pandas as pd
 import pypsa
 import pytz
 import requests
-import xarray as xr
 import yaml
 from snakemake.utils import update_config
 from tqdm import tqdm
@@ -126,7 +123,6 @@ def get_run_path(fn, dir, rdir, shared_resources, exclude_from_shared):
             "cluster_network_base_s_{clusters}",
             "profile_{clusters}_",
             "build_renewable_profile_{clusters}",
-            "regions_by_class_{clusters}",
             "availability_matrix_",
             "determine_availability_matrix_",
             "solar_thermal",
@@ -284,7 +280,7 @@ def configure_logging(snakemake, skip_handlers=False):
 
 def update_p_nom_max(n):
     # if extendable carriers (solar/onwind/...) have capacity >= 0,
-    # e.g. existing assets from GEM are included to the network,
+    # e.g. existing assets from the OPSD project are included to the network,
     # the installed capacity might exceed the expansion limit.
     # Hence, we update the assumptions.
 
@@ -537,7 +533,6 @@ def mock_snakemake(
     else:
         root_dir = Path(root_dir).resolve()
 
-    workdir = None
     user_in_script_dir = Path.cwd().resolve() == script_dir
     if str(submodule_dir) in __file__:
         # the submodule_dir path is only need to locate the project dir
@@ -545,14 +540,12 @@ def mock_snakemake(
     elif user_in_script_dir:
         os.chdir(root_dir)
     elif Path.cwd().resolve() != root_dir:
-        logger.info(
-            "Not in scripts or root directory, will assume this is a separate workdir"
+        raise RuntimeError(
+            "mock_snakemake has to be run from the repository root"
+            f" {root_dir} or scripts directory {script_dir}"
         )
-        workdir = Path.cwd()
-
     try:
         for p in SNAKEFILE_CHOICES:
-            p = root_dir / p
             if os.path.exists(p):
                 snakefile = p
                 break
@@ -573,7 +566,6 @@ def mock_snakemake(
             storage_settings,
             dag_settings,
             storage_provider_settings=dict(),
-            overwrite_workdir=workdir,
         )
         workflow.include(snakefile)
 
@@ -902,50 +894,12 @@ def validate_checksum(file_path, zenodo_url=None, checksum=None):
     )
 
 
-def get_snapshots(
-    snapshots: dict, drop_leap_day: bool = False, freq: str = "h", **kwargs
-) -> pd.DatetimeIndex:
+def get_snapshots(snapshots, drop_leap_day=False, freq="h", **kwargs):
     """
-    Returns a DateTimeIndex of snapshots, supporting multiple time ranges.
-
-    Parameters
-    ----------
-    snapshots : dict
-        Dictionary containing time range parameters. 'start' and 'end' can be
-        strings or lists of strings for multiple date ranges.
-    drop_leap_day : bool, default False
-        If True, removes February 29th from the DateTimeIndex in leap years.
-    freq : str, default "h"
-        Frequency string indicating the time step interval (e.g., "h" for hourly)
-    **kwargs : dict
-        Additional keyword arguments passed to pd.date_range().
-
-    Returns
-    -------
-    pd.DatetimeIndex
+    Returns pandas DateTimeIndex potentially without leap days.
     """
-    start = (
-        snapshots["start"]
-        if isinstance(snapshots["start"], list)
-        else [snapshots["start"]]
-    )
-    end = snapshots["end"] if isinstance(snapshots["end"], list) else [snapshots["end"]]
 
-    assert len(start) == len(end), (
-        "Lists of start and end dates must have the same length"
-    )
-
-    time_periods = []
-    for s, e in zip(start, end):
-        period = pd.date_range(
-            start=s, end=e, freq=freq, inclusive=snapshots["inclusive"], **kwargs
-        )
-        time_periods.append(period)
-
-    time = pd.DatetimeIndex([])
-    for period in time_periods:
-        time = time.append(period)
-
+    time = pd.date_range(freq=freq, **snapshots, **kwargs)
     if drop_leap_day and time.is_leap_year.any():
         time = time[~((time.month == 2) & (time.day == 29))]
 
@@ -1055,35 +1009,3 @@ def rename_techs(label: str) -> str:
         if old == label:
             label = new
     return label
-
-
-def load_cutout(
-    cutout_files: Union[str, list[str]], time: Union[None, pd.DatetimeIndex] = None
-) -> atlite.Cutout:
-    """
-    Load and optionally combine multiple cutout files.
-
-    Parameters
-    ----------
-    cutout_files : str or list of str
-        Path to a single cutout file or a list of paths to multiple cutout files.
-        If a list is provided, the cutouts will be concatenated along the time dimension.
-    time : pd.DatetimeIndex, optional
-        If provided, select only the specified times from the cutout.
-
-    Returns
-    -------
-    atlite.Cutout
-        Merged cutout with optional time selection applied.
-    """
-    if isinstance(cutout_files, str):
-        cutout = atlite.Cutout(cutout_files)
-    elif isinstance(cutout_files, list):
-        cutout_da = [atlite.Cutout(c).data for c in cutout_files]
-        combined_data = xr.concat(cutout_da, dim="time", data_vars="minimal")
-        cutout = atlite.Cutout(NamedTemporaryFile().name, data=combined_data)
-
-    if time is not None:
-        cutout.data = cutout.data.sel(time=time)
-
-    return cutout

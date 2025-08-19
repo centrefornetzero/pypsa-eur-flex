@@ -8,10 +8,9 @@ import folium
 import geopandas as gpd
 import numpy as np
 import pypsa
+from _helpers import configure_logging, set_scenario_config
+from base_network import _get_linetype_by_voltage
 from shapely.wkt import loads
-
-from scripts._helpers import configure_logging, set_scenario_config
-from scripts.base_network import _get_linetype_by_voltage
 
 logger = logging.getLogger(__name__)
 
@@ -109,14 +108,13 @@ def export_clean_csv(df, columns, output_file):
     return None
 
 
-def create_geometries(network, is_converter, crs=GEO_CRS):
+def create_geometries(network, crs=GEO_CRS):
     """
     Create GeoDataFrames for different network components with specified coordinate reference system (CRS).
 
     Parameters
     ----------
         network (PyPSA Network): The network object containing buses, lines, links, converters, and transformers data.
-        is_converter (bool): Boolean that specifies if link element is a converter.
         crs (str, optional): Coordinate reference system to be used for the GeoDataFrames. Defaults to GEO_CRS.
 
     Returns
@@ -223,11 +221,11 @@ def create_geometries(network, is_converter, crs=GEO_CRS):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("prepare_osm_network_release")
 
-    configure_logging(snakemake)  # pylint: disable=E0606
+    configure_logging(snakemake)
     set_scenario_config(snakemake)
 
     # Params
@@ -314,7 +312,7 @@ if __name__ == "__main__":
 
     ### Create interactive map
     buses, lines, links, converters, transformers = create_geometries(
-        network, is_converter=is_converter, crs=GEO_CRS
+        network, crs=GEO_CRS
     )
     stations_polygon = gpd.read_file(snakemake.input.stations_polygon)
     buses_polygon = gpd.read_file(snakemake.input.buses_polygon)

@@ -10,31 +10,31 @@ import logging
 
 import numpy as np
 import pypsa
-
-from scripts._helpers import (
+from _helpers import (
     configure_logging,
     set_scenario_config,
     update_config_from_wildcards,
 )
-from scripts.solve_network import prepare_network, solve_network
+from solve_network import prepare_network, solve_network
 
 logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "solve_operations_network",
             configfiles="test/config.electricity.yaml",
             opts="",
             clusters="5",
+            ll="v1.5",
             sector_opts="",
             planning_horizons="",
         )
 
-    configure_logging(snakemake)  # pylint: disable=E0606
+    configure_logging(snakemake)
     set_scenario_config(snakemake)
     update_config_from_wildcards(snakemake.config, snakemake.wildcards)
 

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-
+# coding: utf-8
 """
 Prepare PyPSA network for solving according to :ref:`opts` and :ref:`ll`, such
 as.
@@ -29,15 +29,14 @@ import logging
 import numpy as np
 import pandas as pd
 import pypsa
-from pypsa.descriptors import expand_series
-
-from scripts._helpers import (
+from _helpers import (
     configure_logging,
     get,
     set_scenario_config,
     update_config_from_wildcards,
 )
-from scripts.add_electricity import load_costs, set_transmission_costs
+from add_electricity import load_costs, set_transmission_costs
+from pypsa.descriptors import expand_series
 
 idx = pd.IndexSlice
 
@@ -286,16 +285,18 @@ def set_line_nom_max(
     n.links["p_nom_max"] = n.links.p_nom_max.clip(upper=p_nom_max_set)
 
 
+# %%
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "prepare_network",
             clusters="37",
+            ll="v1.0",
             opts="Co2L-4H",
         )
-    configure_logging(snakemake)  # pylint: disable=E0606
+    configure_logging(snakemake)
     set_scenario_config(snakemake)
     update_config_from_wildcards(snakemake.config, snakemake.wildcards)
 

@@ -10,17 +10,16 @@ import logging
 import numpy as np
 import pandas as pd
 import pypsa
-from pypsa.descriptors import expand_series
-from six import iterkeys
-
-from scripts._helpers import (
+from _helpers import (
     configure_logging,
     sanitize_custom_columns,
     set_scenario_config,
     update_config_from_wildcards,
 )
-from scripts.add_electricity import sanitize_carriers
-from scripts.add_existing_baseyear import add_build_year_to_new_assets
+from add_electricity import sanitize_carriers
+from add_existing_baseyear import add_build_year_to_new_assets
+from pypsa.descriptors import expand_series
+from six import iterkeys
 
 logger = logging.getLogger(__name__)
 
@@ -177,9 +176,7 @@ def adjust_electricity_grid(n: pypsa.Network, year: int, years: list[int]) -> No
 
 
 # --------------------------------------------------------------------
-def concat_networks(
-    years: list[int], network_paths: list[str], social_discountrate: float
-) -> pypsa.Network:
+def concat_networks(years: list[int], network_paths: list[str]) -> pypsa.Network:
     """
     Concat given pypsa networks and add build years.
 
@@ -344,7 +341,7 @@ def set_phase_out(
     n.links.loc[assets_i, "lifetime"] = (phase_out_year - build_year).astype(float)
 
 
-def set_all_phase_outs(n: pypsa.Network, years: list[int]) -> None:
+def set_all_phase_outs(n: pypsa.Network) -> None:
     # TODO move this to a csv or to the config
     planned = [
         (["nuclear"], "DE", 2022),
@@ -599,15 +596,16 @@ def update_heat_pump_efficiency(n: pypsa.Network, years: list[int]) -> None:
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "prepare_perfect_foresight",
             opts="",
             clusters="37",
+            ll="v1.5",
             sector_opts="1p7-4380H-T-H-B-I-A-dist1",
         )
-    configure_logging(snakemake)  # pylint: disable=E0606
+    configure_logging(snakemake)
     set_scenario_config(snakemake)
 
     update_config_from_wildcards(snakemake.config, snakemake.wildcards)
@@ -623,7 +621,7 @@ if __name__ == "__main__":
     network_paths = [snakemake.input.brownfield_network] + [
         snakemake.input[f"network_{year}"] for year in years[1:]
     ]
-    n = concat_networks(years, network_paths, social_discountrate)
+    n = concat_networks(years, network_paths)
 
     # temporal aggregate
     solver_name = snakemake.config["solving"]["solver"]["name"]
@@ -639,7 +637,7 @@ if __name__ == "__main__":
     adjust_stores(n)
 
     # set phase outs
-    set_all_phase_outs(n, years)
+    set_all_phase_outs(n)
 
     # add H2 boiler
     add_H2_boilers(n)

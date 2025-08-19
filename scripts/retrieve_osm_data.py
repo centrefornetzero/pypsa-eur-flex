@@ -16,8 +16,7 @@ import os
 import time
 
 import requests
-
-from scripts._helpers import (  # set_scenario_config,; update_config_from_wildcards,; update_config_from_wildcards,
+from _helpers import (  # set_scenario_config,; update_config_from_wildcards,; update_config_from_wildcards,
     configure_logging,
     set_scenario_config,
 )
@@ -139,7 +138,7 @@ def retrieve_osm_data(
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from scripts._helpers import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("retrieve_osm_data", country="BE")
     configure_logging(snakemake)

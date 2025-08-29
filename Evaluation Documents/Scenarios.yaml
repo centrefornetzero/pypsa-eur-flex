@@ -1,3 +1,6 @@
+### THIS NEEDS CLEANING BEFORE IT CAN BE USED -- JUST PUTTING IT ALL IN ONE PLACE FOR NOW
+## don't copy paste this, enter it in manually for now in the right sections
+
 #BAU 
 BAU: 
   transmission_limit: copt 
@@ -12,33 +15,29 @@ BAU:
         2040: 425 #has to be this high in order for it to run 
         2050: 550
       #Didn't find a capacity limit for SMR, only tones of H2 produced 
-  co2_sequestration_potential:
-      2020: 0
-      2025: 0
-      2030: 50 # (exogenous) default: 50
-      2035: 165 # ((2040-2030)/2) + 2030 default: 100, at the moment 2035 not in the planning horizon 
-      2040: 280 #default: 200
-      2045: 365 # ((2050-2040)/2) + 2040 default: 200, at the moment 2045 not in the planning horizon
-      2050: 450 #default: 200
+
+  #THESE FLAGS NEED TO BE UNDER SECTOR.
+  sector: 
+    co2_sequestration_potential:
+        2020: 0
+        2025: 0
+        2030: 50 # (exogenous) default: 50
+        2035: 165 # ((2040-2030)/2) + 2030 default: 100, at the moment 2035 not in the planning horizon 
+        2040: 280 #default: 200
+        2045: 365 # ((2050-2040)/2) + 2040 default: 200, at the moment 2045 not in the planning horizon
+        2050: 450 #default: 200
   
-    #heat flexibility 
-  additional_hot_water_tanks: false #for adding additional hot water tanks
-  number_households: 100000000  #should match eurostat eventually, now just 1 million (should probably be 100 million to be half Eurostat)
-  water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
-  water_tank_max_hours: 12  # Decision based on Lizana et al. 2023 Fig 12 b1 
+  
+      #heat flexibility 
+    additional_hot_water_tanks: false #for adding additional hot water tanks
+    number_households: 150000000  #will be divided equally among rural and urban households, multiplied by each countries proportion of households.
+    water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
+    water_tank_max_hours: 12  # Decision based on Lizana et al. 2023 Fig 12 b1 
 
-    #BEV flexibility
-  bev_dsm: false  #no BEV demand side management
-  v2g: false  #set to the above in terms of proportion of fleet 
-  bev_dsm_restriction_value: 0.75
-  bev_dsm_restriction_time: 7
-  bev_energy: 0.05
-  bev_charge_efficiency: 0.9
-  bev_dsm_availability: 0.5
-  bev_charge_rate: 0.011
-  bev_avail_max: 0.95
-  bev_avail_mean: 0.8
-
+      #BEV flexibility
+    bev_dsm: false  #no BEV demand side management
+    v2g: false  #set to the above in terms of proportion of fleet 
+    bev_dsm_availability: 0.5 #WHATEVER PROPORTION OF THE FLEET YOU WANT TO HAVE DSM AND V2G ENABLED.
 
 
 
@@ -46,120 +45,48 @@ BAU:
 #Transmission Restriction
 Scenario2_no_flex: 
   transmission_limit: 1.82copt 
-  #nothing else should change and the BAU should be the default 
-  #hydrogen limitations 
-  limit_capacity_by_country : false #false means that the limits applied to all of Europe, true means the structure has to mimic pypsa DE and apply to the whole country
-  ## CUSTOM CONSTRAINT of Carrier Specific Capcity Growth (Modelled AFTER FUNCTION IN PYPSA DE)
-  limits_capacity_max: #if this config flag is here, it triggers the capacity limits (sense = maximum)
-    Link:
-      H2 Electrolysis: # in GW
-        2020: .250 #limit matches with existing capacity built for 2020? For 2023: 258 MW source: https://observatory.clean-hydrogen.europa.eu/sites/default/files/2024-11/The%20European%20hydrogen%20market%20landscape_November%202024.pdf
-        2030: 40 #see table in Project Logbook Notes
-        2040: 181
-        2050: 550
-      #Didn't find a capacity limit for SMR, only tones of H2 produced 
-    #carbon sequestration limitation 
-  co2_sequestration_potential: #following BAU scenario
-      2020: 0
-      2025: 0
-      2030: 50 # (exogenous) default: 50
-      2035: 165 # ((2040-2030)/2) + 2030 default: 100, at the moment 2035 not in the planning horizon 
-      2040: 280 #default: 200
-      2045: 365 # ((2050-2040)/2) + 2040 default: 200, at the moment 2045 not in the planning horizon
-      2050: 450 #default: 200
-  
-    #heat flexibility 
-  additional_hot_water_tanks: false #for adding additional hot water tanks
-  number_households: 100000000  #should match eurostat eventually, now just 1 million (should probably be 100 million to be half Eurostat)
-  water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
-  water_tank_max_hours: 12  # Decision based on Lizana et al. 2023 Fig 12 b1 
+  #nothing else should change AND SHOULD BE SET TO BAU
+   
 
-    #BEV flexibility
-  bev_dsm: false  #set to 1/2 the electric vehicle fleet initially
-  v2g: false  #set to the above
-  bev_dsm_restriction_value: 0.75
-  bev_dsm_restriction_time: 7
-  bev_energy: 0.05
-  bev_charge_efficiency: 0.9
-  bev_dsm_availability: 0.9 #0.5, but I want nearly all cars available
-  bev_charge_rate: 0.011
-  bev_avail_max: 0.95
-  bev_avail_mean: 0.8
-
-
-
-#Scenarios 3 - Hydrogen related 
+#Carbon minimums scenarios 
 Scenario3_no_flex_unlimited_hydrogen:
   #unlimited hydrogen development 
   transmission_limit: copt 
   #hydrogen limitations 
   limit_capacity_by_country : false #false means that the limits applied to all of Europe, true means the structure has to mimic pypsa DE and apply to the whole country
    #carbon sequestration limitation 
-  co2_sequestration_potential:
-      2020: 0
-      2025: 0
-      2030: 0 #50
-      2035: 0 #100
-      2045: 0 #200
-      2040: 0 #200
-      2050: 0 #200
-   #heat flexibility 
-  additional_hot_water_tanks: false #for adding additional hot water tanks
-  number_households: 100000000  #should match eurostat eventually, now just 1 million (should probably be 100 million to be half Eurostat)
-  water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
-  water_tank_max_hours: 12  # Decision based on Lizana et al. 2023 Fig 12 b1 
-
-    #BEV flexibility
-  bev_dsm: false  #set to 1/2 the electric vehicle fleet initially
-  v2g: false  #set to the above
-  bev_dsm_restriction_value: 0.75
-  bev_dsm_restriction_time: 7
-  bev_energy: 0.05
-  bev_charge_efficiency: 0.9
-  bev_dsm_availability: 0.9 #0.5, but I want nearly all cars available
-  bev_charge_rate: 0.011
-  bev_avail_max: 0.95
-  bev_avail_mean: 0.8
-
-
-
-Scenario3.1:
-  #BAU hydrogen development, one period delay
-  transmission_limit: copt
-
-  #heat flexibility 
-  additional_hot_water_tanks: true #for adding additional hot water tanks
-  number_households: 100000000  #should match eurostat eventually, now just 1 million (should probably be 100 million to be half Eurostat)
-  water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
-  water_tank_max_hours: 12  # Decision based on Lizana et al. 2023 Fig 12 b1 
-
-  #BEV flexibility
-  bev_dsm: true  #set to 1/2 the electric vehicle fleet initially
-  v2g: true  #set to the above
-  bev_dsm_availability: 0.9 #0.5, but I want nearly all cars available
- 
-  #hydrogen limitations 
-  limit_capacity_by_country : false #false means that the limits applied to all of Europe, true means the structure has to mimic pypsa DE and apply to the whole country
-  ## CUSTOM CONSTRAINT of Carrier Specific Capcity Growth (Modelled AFTER FUNCTION IN PYPSA DE)
-  limits_capacity_max: #if this config flag is here, it triggers the capacity limits (sense = maximum)
-    Link:
-      H2 Electrolysis: # in GW
-        2020: 0.0016 #limit matches with existing capacity built for 2020? For 2023: 258 MW source: https://observatory.clean-hydrogen.europa.eu/sites/default/files/2024-11/The%20European%20hydrogen%20market%20landscape_November%202024.pdf
-        2030: 40 #see table in Project Logbook Notes
-        2040: 425
-        2050: 550
+  sector:
     co2_sequestration_potential:
-    2020: 0
-    2025: 0
-    2030: 50 # (exogenous) default: 50
-    2035: 165 # ((2040-2030)/2) + 2030 default: 100, at the moment 2035 not in the planning horizon 
-    2040: 280 #default: 200
-    2045: 365 # ((2050-2040)/2) + 2040 default: 200, at the moment 2045 not in the planning horizon
-    2050: 450 #default: 200
+        2020: 0
+        2025: 0
+        2030: 0 #50
+        2035: 0 #100
+        2045: 0 #200
+        2040: 0 #200
+        2050: 0 #200
+    #heat flexibility 
+    additional_hot_water_tanks: false #for adding additional hot water tanks
+    number_households: 100000000  #should match eurostat eventually, now just 1 million (should probably be 100 million to be half Eurostat)
+    water_tank_standing_loss: 0.02 # see Small scale hot water tank https://ens.dk/en/our-services/projections-and-models/technology-data/technology-data-energy-storage
+    water_tank_max_hours: 12  # Decision based on Lizana et al. 2023 Fig 12 b1 
+
+      #BEV flexibility
+    bev_dsm: false  #set to 1/2 the electric vehicle fleet initially
+    v2g: false  #set to the above
+    bev_dsm_restriction_value: 0.75
+    bev_dsm_restriction_time: 7
+    bev_energy: 0.05
+    bev_charge_efficiency: 0.9
+    bev_dsm_availability: 0.9 #0.5, but I want nearly all cars available
+    bev_charge_rate: 0.011
+    bev_avail_max: 0.95
+    bev_avail_mean: 0.8
 
 
 
-#Sceanrio 3.2 
+
+#Minimum hydrogen Scenario ---- these are now too high, [Aug 29] you have to re-reun the high cost hydrogen option to find the new minimums, but this is how you do it!
+  #all other values at BAU 
 limits_capacity_max: #if this config flag is here, it triggers the capacity limits (sense = maximum)
   Link:
     H2 Electrolysis: # in GW
@@ -187,4 +114,5 @@ limits_capacity_max: #if this config flag is here, it triggers the capacity limi
       2030: .0017
       2040: 24.54561
       2050: 24.52601
+    
 

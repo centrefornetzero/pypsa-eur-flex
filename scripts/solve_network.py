@@ -972,6 +972,225 @@ def add_co2_atmosphere_constraint(n, snapshots):
             n.model.add_constraints(lhs <= rhs, name=f"GlobalConstraint-{name}")
 
 
+############# From Pypsa-DE, June 4 2024 test for delayed technology occurrence #############
+def first_technology_occurrence(n):
+    """
+    Sets p_nom_extendable to false for carriers with configured first
+    occurrence if investment year is before configured year.
+    """
+    #technology_occurrence=config_provider("first_technology_occurrence") this needs to go into the rule params that use solve_network.py (solve_myopic.smk))
+    for c, carriers in snakemake.params.technology_occurrence.items():
+        for carrier, first_year in carriers.items():
+            if int(snakemake.wildcards.planning_horizons) < first_year:
+                logger.info(f"{carrier} not extendable before {first_year}.")
+                n.df(c).loc[n.df(c).carrier == carrier, "p_nom_extendable"] = False
+
+############# Modified from Pypsa-DE, June 5 test for capacity constraint per carrier in time #############
+## must declare if by_country is True or False in the config.yaml. 
+# If true then the original function shall run with constraints outlined by country in the config file 
+# If false then the modified function shall run with the constraints applied to all countries 
+
+
+def add_capacity_limits(n, investment_year, limits_capacity, sense):
+    # my addition:
+    if not n.config["limit_capacity_by_country"]:
+        logger.info("Adding capacity limits for all countries")
+        logger.info("the investment year is " + str(investment_year))
+
+        for c in n.iterate_components(limits_capacity):
+            logger.info(f"Adding {sense} constraints for {c.list_name}")
+
+            attr = "e" if c.name == "Store" else "p"
+            units = "MWh or tCO2" if c.name == "Store" else "MW"
+
+            for carrier in limits_capacity[c.name]:
+                if investment_year not in limits_capacity[c.name][carrier].keys():
+                    continue
+                
+                limit = 1e3 * limits_capacity[c.name][carrier][investment_year]
+
+                logger.info(
+                        f"Adding constraint on {c.name} {carrier} capacity in all countries to be {sense} {limit} {units}"
+                    )
+                
+                valid_components = (
+                        (c.df.carrier.str[: len(carrier)] == carrier)
+                        & ~c.df.carrier.str.contains("thermal")
+                    )  # exclude solar thermal
+                
+                existing_index = c.df.index[
+                        valid_components & ~c.df[attr + "_nom_extendable"]
+                    ]
+                extendable_index = c.df.index[
+                        valid_components & c.df[attr + "_nom_extendable"]
+                    ]
+                existing_capacity = c.df.loc[existing_index, attr + "_nom"].sum()
+
+                logger.info(
+                        f"Existing {c.name} {carrier} capacity: {existing_capacity} {units}"
+                    )
+                nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
+
+                lhs = nom.sum()
+
+                cname = f"capacity_{sense}-expansion-Europe-{c.name}-{carrier.replace(' ', '-')}"
+
+                if cname in n.global_constraints.index:
+                    logger.warning(
+                        f"Global constraint {cname} already exists. Dropping and adding it again."
+                    )
+                    n.global_constraints.drop(cname, inplace=True)
+
+                rhs = limit - existing_capacity
+
+                if sense == "maximum":
+                    if rhs <= 0:
+                        logger.warning(
+                            f"Existing capacity in Europe for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
+                        )
+                        rhs = 0
+
+                    n.model.add_constraints(
+                        lhs <= rhs,
+                        name=f"GlobalConstraint-{cname}",
+                    )
+                    n.add(
+                        "GlobalConstraint",
+                        cname,
+                        constant=rhs,
+                        sense="<=",
+                        type="capacity_limit",
+                        carrier_attribute="",
+                    )
+
+                elif sense == "minimum":
+                    n.model.add_constraints(
+                        lhs >= rhs,
+                        name=f"GlobalConstraint-{cname}",
+                    )
+                    n.add(
+                        "GlobalConstraint",
+                        cname,
+                        constant=rhs,
+                        sense=">=",
+                        type="capacity_limit",
+                        carrier_attribute="",
+                    )
+
+    elif n.config["limit_capacity_by_country"]:
+        logger.info("Adding capacity limits by country")
+        for c in n.iterate_components(limits_capacity):
+            logger.info(f"Adding {sense} constraints for {c.list_name}")
+
+            attr = "e" if c.name == "Store" else "p"
+            units = "MWh or tCO2" if c.name == "Store" else "MW"
+
+            for carrier in limits_capacity[c.name]:
+                for ct in limits_capacity[c.name][carrier]:
+                    if investment_year not in limits_capacity[c.name][carrier][ct].keys():
+                        continue
+
+                    limit = 1e3 * limits_capacity[c.name][carrier][ct][investment_year]
+
+                    logger.info(
+                        f"Adding constraint on {c.name} {carrier} capacity in {ct} to be {sense} {limit} {units}"
+                    )
+
+                    valid_components = (
+                        (c.df.index.str[:2] == ct)
+                        & (c.df.carrier.str[: len(carrier)] == carrier)
+                        & ~c.df.carrier.str.contains("thermal")
+                    )  # exclude solar thermal
+
+                    existing_index = c.df.index[
+                        valid_components & ~c.df[attr + "_nom_extendable"]
+                    ]
+                    extendable_index = c.df.index[
+                        valid_components & c.df[attr + "_nom_extendable"]
+                    ]
+
+                    existing_capacity = c.df.loc[existing_index, attr + "_nom"].sum()
+
+                    logger.info(
+                        f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} {units}"
+                    )
+
+                    nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
+
+                    lhs = nom.sum()
+
+                    cname = f"capacity_{sense}-{ct}-{c.name}-{carrier.replace(' ', '-')}"
+
+                    if cname in n.global_constraints.index:
+                        logger.warning(
+                            f"Global constraint {cname} already exists. Dropping and adding it again."
+                        )
+                        n.global_constraints.drop(cname, inplace=True)
+
+                    rhs = limit - existing_capacity
+
+                    if sense == "maximum":
+                        if rhs <= 0:
+                            logger.warning(
+                                f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
+                            )
+                            rhs = 0
+
+                        n.model.add_constraints(
+                            lhs <= rhs,
+                            name=f"GlobalConstraint-{cname}",
+                        )
+                        n.add(
+                            "GlobalConstraint",
+                            cname,
+                            constant=rhs,
+                            sense="<=",
+                            type="",
+                            carrier_attribute="",
+                        )
+
+                    elif sense == "minimum":
+                        n.model.add_constraints(
+                            lhs >= rhs,
+                            name=f"GlobalConstraint-{cname}",
+                        )
+                        n.add(
+                            "GlobalConstraint",
+                            cname,
+                            constant=rhs,
+                            sense=">=",
+                            type="",
+                            carrier_attribute="",
+                        )
+    else:
+        logger.error("sense {sense} not recognised")
+        sys.exit()
+
+
+#Added August 19 
+def forced_gas_operation(n, planning_horizon_year):
+    logger.info(f"planning horizon year is {planning_horizon_year}")
+    logger.info("forced gas operation activated")
+    logger.info(f'planning horizon type is {(type(planning_horizon_year))}')
+    if planning_horizon_year == '2020':
+        logger.info('forced gas operation activated for the right year')
+        lhs = n.model['Link-p'].groupby(n.links.carrier.to_xarray()).sum().sum("snapshot").loc["CCGT"] 
+        rhs = (400000000/n.snapshot_weightings.objective[0]) #MWh turned into MW
+        n.model.add_constraints(
+                        lhs >= rhs,
+                        name=f"GlobalConstraint-gas operational constraint to match 2020 ENTSOE order of magnitude",
+                    )
+        n.add(
+                "GlobalConstraint",
+                'gas operational constraint to match 2020 ENTSOE order of magnitude',
+                constant=400000000, #MWh
+                sense=">=",
+                type="operational constraint",
+                carrier_attribute="gas",
+                )
+
+#################################################
+
 def extra_functionality(
     n: pypsa.Network, snapshots: pd.DatetimeIndex, planning_horizons: str | None = None
 ) -> None:
@@ -1029,6 +1248,28 @@ def extra_functionality(
 
     if config["sector"]["enhanced_geothermal"]["enable"]:
         add_flexible_egs_constraint(n)
+
+    # June 4 2024 test for delayed technology occurrence #
+    if config.get('first_technology_occurrence'):
+        first_technology_occurrence(n)
+
+    investment_year = int(snakemake.wildcards.planning_horizons[-4:])
+    logger.info(f'The investment year is {investment_year}')
+    #try to see if planning horizon year will work instead of investment year_ 
+    if config.get('limits_capacity_min'):
+        add_capacity_limits(
+            n, investment_year, config["limits_capacity_min"], "minimum"
+        )
+
+    if config.get('limits_capacity_max'):
+        add_capacity_limits(
+            n, investment_year, config["limits_capacity_max"], "maximum"
+        )
+
+    if config.get('forced_gas_constraint'):
+        forced_gas_operation(
+            n, planning_horizons
+        )
 
     if n.params.custom_extra_functionality:
         source_path = n.params.custom_extra_functionality

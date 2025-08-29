@@ -1,0 +1,2 @@
+INFO:pypsa.io:Imported network base_s_39___2050.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+INFO:__main__:Dropping non-buses ['', 'EU coal', 'EU gas', 'EU industry', 'EU lignite', 'EU methanol', 'EU oil', 'EU shipping', 'EU solid', 'EU uranium', 'H2 pipeline', 'gas pipeline', 'solid']

@@ -2681,6 +2681,66 @@ def add_heat(
                 ],
             )
 
+        if options.get('additional_hot_water_tanks'): #adding longer water tanks, specifically connected to the low voltage network
+            if ((investment_year in [2020, 2050]) and not (heat_system == HeatSystem.URBAN_CENTRAL)): #just want these additional stores in urban decentral and rural, also this is custom based on our investment year choices, can change 
+                #only for urban central and rural, #### Adding in a lot more heating storage: modelled after pypsa fes setup  
+                logger.info(f'Heat system is {heat_system}')
+                logger.info("Adding heat flexibility adding a hot water tank.")
+
+                standing_loss = options["water_tank_standing_loss"]
+                max_hours_value = options["water_tank_max_hours"]
+                n.add("Carrier", f"{heat_system} water storage tanks")
+                number_houses_with_additional_tanks = float(options['number_households'] /2) #have to divide  /2 to get half of the total households with storage additions to each type
+                logger.info(f' number households with additional tanks per country is {number_houses_with_additional_tanks}')
+
+
+                pop_fraction_per_country = (pop_layout.total / (pop_layout.total.sum()))
+                logger.info(f'{pop_fraction_per_country}')
+                storage_per_country = 0.006 * number_houses_with_additional_tanks * pop_fraction_per_country.values
+                logger.info(f'heating per country : {storage_per_country}')
+                logger.info(f'Nodes are {nodes}')
+                n.add(
+                    "Link",
+                    nodes + f" {heat_system} water storage tanks charger",
+                    bus0=nodes + f" {heat_system} heat",
+                    bus1=nodes + f" {heat_system} water tanks",
+                    efficiency=costs.at["water tank charger", "efficiency"],
+                    carrier=f"{heat_system} water tanks charger",
+                    p_nom_extendable=True,
+                )
+                n.add(
+                    "Bus",
+                    nodes + f" {heat_system} water tanks",
+                    location=nodes,
+                    carrier=f"{heat_system} water tanks",
+                    unit="MWh_th",
+                )
+                n.add(
+                    "Link",
+                    nodes + f" {heat_system} water storage tanks discharger",
+                    bus0=nodes + f" {heat_system} water tanks",
+                    bus1=nodes + f" {heat_system} heat",
+                    carrier=f"{heat_system} water tanks discharger",
+                    efficiency=costs.at["water tank discharger", "efficiency"],
+                    p_nom_extendable=True,
+                )
+                n.add(
+                    "Store",
+                    nodes + f" {heat_system} water storage tanks",
+                    bus=nodes + f" {heat_system} water tanks",
+                    e_nom=storage_per_country, #multiplied by number of households, then multiplied by countries population fraction
+                    e_nom_extendable=False,
+                    carrier=f"{heat_system} water tanks",
+                    standing_loss=standing_loss,
+                    #max_hours=max_hours_value,
+                    capital_cost=costs.at[
+                        heat_system.central_or_decentral + " water tank storage",
+                        "capital_cost",
+                    ],
+                    lifetime=costs.at[
+                        heat_system.central_or_decentral + " water tank storage", "lifetime"
+                    ],
+                )
         if options["resistive_heaters"]:
             key = f"{heat_system.central_or_decentral} resistive heater"
 
@@ -5125,7 +5185,6 @@ def add_enhanced_geothermal(
                 max_hours=max_hours,
                 cyclic_state_of_charge=True,
             )
-
 
 # %%
 if __name__ == "__main__":

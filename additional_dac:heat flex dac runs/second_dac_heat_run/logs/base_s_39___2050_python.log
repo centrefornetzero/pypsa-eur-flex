@@ -1,0 +1,39 @@
+INFO:pypsa.io:Imported network base_s_39___2050_brownfield.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+WARNING:pypsa.consistency:The following buses have no attached components, which can break the lopf: {'EU'}
+INFO:__main__:Adding solar potential constraint.
+INFO:__main__:Adding capacity limits for all countries
+INFO:__main__:the investment year is 2050
+INFO:__main__:Adding maximum constraints for links
+INFO:__main__:Adding constraint on Link H2 Electrolysis capacity in all countries to be maximum 494000.0 MW
+INFO:__main__:Existing Link H2 Electrolysis capacity: 493769.0399548516 MW
+INFO:__main__:Adding constraint on Link SMR capacity in all countries to be maximum 11000.0 MW
+INFO:__main__:Existing Link SMR capacity: 6966.696597041183 MW
+INFO:__main__:Adding constraint on Link SMR_cc capacity in all countries to be maximum 4400.0 MW
+INFO:__main__:Existing Link SMR_cc capacity: 0.0 MW
+INFO:__main__:Adding constraint on Link H2 pipeline capacity in all countries to be maximum 165000.0 MW
+INFO:__main__:Existing Link H2 pipeline capacity: 164986.30677093676 MW
+INFO:__main__:Adding constraint on Link H2 pipeline retrofitted capacity in all countries to be maximum 44000.0 MW
+INFO:__main__:Existing Link H2 pipeline retrofitted capacity: 33925.215577087176 MW
+INFO:linopy.model: Solve problem using Gurobi solver
+INFO:linopy.model:Solver options:
+ - threads: 8
+ - method: 2
+ - crossover: 0
+ - BarConvTol: 1e-06
+ - Seed: 123
+ - AggFill: 0
+ - PreDual: 0
+ - GURO_PAR_BARDENSETHRESH: 200
+INFO:linopy.io:Writing objective.
+INFO:linopy.io: Writing time: 50.36s
+INFO:linopy.constants: Optimization successful: 
+Status: ok
+Termination condition: optimal
+Solution: 9681839 primals, 19637409 duals
+Objective: 6.69e+10
+Solver model: available
+Solver message: 2
+
+INFO:pypsa.optimization.optimize:The shadow-prices of the constraints Generator-fix-p-lower, Generator-fix-p-upper, Generator-ext-p-lower, Generator-ext-p-upper, Line-ext-s-lower, Line-ext-s-upper, Link-fix-p-lower, Link-fix-p-upper, Link-ext-p-lower, Link-ext-p-upper, Store-fix-e-lower, Store-fix-e-upper, Store-ext-e-lower, Store-ext-e-upper, StorageUnit-fix-p_dispatch-lower, StorageUnit-fix-p_dispatch-upper, StorageUnit-fix-p_store-lower, StorageUnit-fix-p_store-upper, StorageUnit-fix-state_of_charge-lower, StorageUnit-fix-state_of_charge-upper, Kirchhoff-Voltage-Law, StorageUnit-energy_balance, Store-energy_balance, Line-loss_upper, Line-loss_tangents-1--1, Line-loss_tangents-1-1, Line-loss_tangents-2--1, Line-loss_tangents-2-1, solar_potential were not assigned to the network.
+INFO:__main__:Maximum memory usage: (8242.203125, 1754555787.40733)
+INFO:pypsa.io:Exported network 'base_s_39___2050.nc' contains: storage_units, stores, global_constraints, generators, lines, carriers, loads, links, buses

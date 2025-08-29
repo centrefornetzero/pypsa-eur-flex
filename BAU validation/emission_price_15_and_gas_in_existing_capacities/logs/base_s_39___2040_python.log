@@ -1,0 +1,29 @@
+INFO:pypsa.io:Imported network base_s_39___2040_brownfield.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+WARNING:__main__:Existing capacities larger than technical potential for Index(['ES6 0 solar-2040', 'FR5 0 solar-2040', 'BE0 0 offwind-ac-2040',
+       'DE0 0 offwind-ac-2040', 'GB3 0 offwind-ac-2040'],
+      dtype='object', name='Generator'),                        adjust technical potential to existing capacities
+WARNING:pypsa.consistency:The following buses have no attached components, which can break the lopf: {'EU'}
+INFO:__main__:Adding solar potential constraint.
+INFO:linopy.model: Solve problem using Gurobi solver
+INFO:linopy.model:Solver options:
+ - threads: 8
+ - method: 2
+ - crossover: 0
+ - BarConvTol: 1e-06
+ - Seed: 123
+ - AggFill: 0
+ - PreDual: 0
+ - GURO_PAR_BARDENSETHRESH: 200
+INFO:linopy.io:Writing objective.
+INFO:linopy.io: Writing time: 46.1s
+INFO:linopy.constants: Optimization successful: 
+Status: ok
+Termination condition: optimal
+Solution: 8036422 primals, 17145188 duals
+Objective: 6.10e+11
+Solver model: available
+Solver message: 2
+
+INFO:pypsa.optimization.optimize:The shadow-prices of the constraints Generator-fix-p-lower, Generator-fix-p-upper, Generator-ext-p-lower, Generator-ext-p-upper, Line-ext-s-lower, Line-ext-s-upper, Link-fix-p-lower, Link-fix-p-upper, Link-ext-p-lower, Link-ext-p-upper, Store-fix-e-lower, Store-fix-e-upper, Store-ext-e-lower, Store-ext-e-upper, StorageUnit-fix-p_dispatch-lower, StorageUnit-fix-p_dispatch-upper, StorageUnit-fix-p_store-lower, StorageUnit-fix-p_store-upper, StorageUnit-fix-state_of_charge-lower, StorageUnit-fix-state_of_charge-upper, Kirchhoff-Voltage-Law, StorageUnit-energy_balance, Store-energy_balance, Line-loss_upper, Line-loss_tangents-1--1, Line-loss_tangents-1-1, Line-loss_tangents-2--1, Line-loss_tangents-2-1, solar_potential were not assigned to the network.
+INFO:__main__:Maximum memory usage: (7927.3125, 1755248864.487565)
+INFO:pypsa.io:Exported network 'base_s_39___2040.nc' contains: carriers, stores, links, generators, storage_units, lines, buses, global_constraints, loads

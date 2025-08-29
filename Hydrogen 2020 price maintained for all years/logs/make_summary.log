@@ -1,0 +1,12 @@
+INFO:prepare_sector_network:Overwriting marginal_cost of Index(['solar', 'onwind', 'offwind', 'hydro', 'electrolysis', 'fuel cell',
+       'battery', 'battery inverter', 'H2'],
+      dtype='object') to [0.01  0.015 0.015 0.    0.    0.    0.    0.    0.   ]
+INFO:prepare_sector_network:Overwriting capital_cost of Index(['geothermal'], dtype='object') to [3241320]
+INFO:__main__:Make summary for scenario (39, '', 2020), using results//networks/base_s_39___2020.nc
+INFO:pypsa.io:Imported network base_s_39___2020.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+INFO:__main__:Make summary for scenario (39, '', 2030), using results//networks/base_s_39___2030.nc
+INFO:pypsa.io:Imported network base_s_39___2030.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+INFO:__main__:Make summary for scenario (39, '', 2040), using results//networks/base_s_39___2040.nc
+INFO:pypsa.io:Imported network base_s_39___2040.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+INFO:__main__:Make summary for scenario (39, '', 2050), using results//networks/base_s_39___2050.nc
+INFO:pypsa.io:Imported network base_s_39___2050.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores

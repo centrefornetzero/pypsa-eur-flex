@@ -115,6 +115,7 @@ rule solve_sector_network_myopic:
         co2_sequestration_potential=config_provider(
             "sector", "co2_sequestration_potential", default=200
         ),
+        technology_occurrence=config_provider("first_technology_occurrence"),
         custom_extra_functionality=input_custom_extra_functionality,
     input:
         network=resources(

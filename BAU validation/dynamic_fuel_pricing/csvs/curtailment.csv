@@ -1,0 +1,27 @@
+cluster,39,39,39,39
+opt,,,,
+planning_horizon,2020,2030,2040,2050
+carrier,,,,
+biogas,-inf,-inf,-inf,-inf
+coal,-inf,-inf,-inf,-inf
+gas,-inf,-inf,-inf,-inf
+geothermal,-inf,-inf,-inf,-inf
+lignite,-inf,-inf,-inf,-inf
+nuclear,-inf,-inf,-inf,-inf
+offwind-ac,0.599,2.107,4.327,1.891
+offwind-dc,24.032,0.0,0.668,0.272
+offwind-float,31.015,23.404,0.002,0.0
+oil primary,-inf,-inf,-inf,-inf
+onwind,1.55,1.388,4.086,1.874
+ror,0.001,0.005,0.011,0.016
+rural solar thermal,32.064,36.264,41.916,45.631
+solar,0.043,3.549,3.446,1.522
+solar rooftop,0.0,0.792,0.866,0.451
+solar-hsat,0.0,1.392,30.832,20.543
+solid biomass,-inf,-inf,-inf,-inf
+unsustainable biogas,-inf,-inf,,
+unsustainable bioliquids,-inf,-inf,,
+unsustainable solid biomass,-inf,-inf,,
+urban central heat vent,inf,inf,inf,inf
+urban central solar thermal,29.541,23.902,33.191,43.206
+urban decentral solar thermal,26.911,34.655,41.004,47.04

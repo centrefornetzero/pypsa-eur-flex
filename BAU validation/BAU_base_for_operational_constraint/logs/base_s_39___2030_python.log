@@ -1,0 +1,45 @@
+INFO:pypsa.io:Imported network base_s_39___2030_brownfield.nc has buses, carriers, generators, global_constraints, lines, links, loads, storage_units, stores
+WARNING:__main__:Existing capacities larger than technical potential for Index(['ES6 0 onwind-2030', 'ES6 0 solar-2030', 'FR5 0 solar-2030',
+       'BE0 0 offwind-ac-2030', 'DE0 0 offwind-ac-2030',
+       'GB3 0 offwind-ac-2030', 'NL0 0 offwind-ac-2030'],
+      dtype='object', name='Generator'),                        adjust technical potential to existing capacities
+WARNING:pypsa.consistency:The following links have carriers which are not defined:
+Index(['AT0 0 rural oil boiler-2015', 'AT0 0 rural oil boiler-2019',
+       'AT0 0 urban decentral oil boiler-2015',
+       'AT0 0 urban decentral oil boiler-2019', 'BE0 0 rural oil boiler-2015',
+       'BE0 0 rural oil boiler-2019', 'BE0 0 urban decentral oil boiler-2015',
+       'BE0 0 urban decentral oil boiler-2019', 'BG0 0 rural oil boiler-2015',
+       'BG0 0 rural oil boiler-2019',
+       ...
+       'SE1 0 urban decentral oil boiler-2015',
+       'SE1 0 urban decentral oil boiler-2019', 'SI0 0 rural oil boiler-2015',
+       'SI0 0 rural oil boiler-2019', 'SI0 0 urban decentral oil boiler-2015',
+       'SI0 0 urban decentral oil boiler-2019', 'SK0 0 rural oil boiler-2015',
+       'SK0 0 rural oil boiler-2019', 'SK0 0 urban decentral oil boiler-2015',
+       'SK0 0 urban decentral oil boiler-2019'],
+      dtype='object', name='Link', length=107)
+WARNING:pypsa.consistency:The following buses have no attached components, which can break the lopf: {'EU'}
+INFO:__main__:Adding solar potential constraint.
+INFO:linopy.model: Solve problem using Gurobi solver
+INFO:linopy.model:Solver options:
+ - threads: 8
+ - method: 2
+ - crossover: 0
+ - BarConvTol: 1e-06
+ - Seed: 123
+ - AggFill: 0
+ - PreDual: 0
+ - GURO_PAR_BARDENSETHRESH: 200
+INFO:linopy.io:Writing objective.
+INFO:linopy.io: Writing time: 47.98s
+INFO:linopy.constants: Optimization successful: 
+Status: ok
+Termination condition: optimal
+Solution: 8588301 primals, 18294289 duals
+Objective: 4.55e+11
+Solver model: available
+Solver message: 2
+
+INFO:pypsa.optimization.optimize:The shadow-prices of the constraints Generator-fix-p-lower, Generator-fix-p-upper, Generator-ext-p-lower, Generator-ext-p-upper, Line-ext-s-lower, Line-ext-s-upper, Link-fix-p-lower, Link-fix-p-upper, Link-ext-p-lower, Link-ext-p-upper, Store-fix-e-lower, Store-fix-e-upper, Store-ext-e-lower, Store-ext-e-upper, StorageUnit-fix-p_dispatch-lower, StorageUnit-fix-p_dispatch-upper, StorageUnit-fix-p_store-lower, StorageUnit-fix-p_store-upper, StorageUnit-fix-state_of_charge-lower, StorageUnit-fix-state_of_charge-upper, Kirchhoff-Voltage-Law, StorageUnit-energy_balance, Store-energy_balance, Line-loss_upper, Line-loss_tangents-1--1, Line-loss_tangents-1-1, Line-loss_tangents-2--1, Line-loss_tangents-2-1, solar_potential were not assigned to the network.
+INFO:__main__:Maximum memory usage: (8145.9375, 1755592851.302963)
+INFO:pypsa.io:Exported network 'base_s_39___2030.nc' contains: global_constraints, loads, links, buses, generators, stores, carriers, storage_units, lines

@@ -157,6 +157,7 @@ def set_transmission_limit(n, kind, factor, costs, Nyears=1):
         lines_s_nom @ n.lines[col]
         + n.links.loc[links_dc_b, "p_nom"] @ n.links.loc[links_dc_b, col]
     )
+    logger.info('Transmission limit set') #added so I can see if a transmission limit was truly
 
     set_transmission_costs(n, costs)
 

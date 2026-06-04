@@ -823,7 +823,7 @@ rule build_industrial_production_per_country:
         ),
     threads: 8
     resources:
-        mem_mb=1000,
+        mem_mb=2000,
     log:
         logs("build_industrial_production_per_country.log"),
     benchmark:
@@ -973,7 +973,7 @@ rule build_industrial_energy_demand_per_country_today:
         ),
     threads: 8
     resources:
-        mem_mb=1000,
+        mem_mb=2000,
     log:
         logs("build_industrial_energy_demand_per_country_today.log"),
     benchmark:
@@ -1421,6 +1421,8 @@ rule prepare_sector_network:
             if config_provider("sector", "district_heating", "ates", "enable")(w)
             else []
         ),
+        heat_profile="data/heat_load_profile_BDEW.csv", #added Nov 19 by Katherine Shaw to implement Lukas thermal inertia
+        heat_demand=resources("daily_heat_demand_total_base_s_{clusters}.nc"), #added Nov 19 by Katherine Shaw to implement Lukas thermal inertia
     output:
         resources(
             "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"

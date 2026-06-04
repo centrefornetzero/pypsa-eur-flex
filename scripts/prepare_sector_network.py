@@ -220,6 +220,17 @@ def define_spatial(nodes, options):
     spatial.geothermal_heat.nodes = ["EU enhanced geothermal systems"]
     spatial.geothermal_heat.locations = ["EU"]
 
+    # residential heat demand ### Katherine Shaw, Added Nov 20, for Lukas's thermal inertia 
+    spatial.heat_demand = SimpleNamespace()
+    spatial.heat_demand.nodes = nodes + " heat demand"
+    spatial.heat_demand.locations = nodes
+
+    
+    # residential thermal inertia
+    spatial.thermal_inertia = SimpleNamespace()
+    spatial.thermal_inertia.nodes = nodes + " thermal inertia"
+    spatial.thermal_inertia.locations = nodes
+
     return spatial
 
 
@@ -813,7 +824,13 @@ def add_co2_tracking(n, costs, options, sequestration_potential_file=None):
             options["regional_co2_sequestration_potential"]["max_size"] * 1e3
         )  # Mt
         annualiser = options["regional_co2_sequestration_potential"]["years_of_storage"]
-        e_nom_max = pd.read_csv(sequestration_potential_file, index_col=0).squeeze()
+        df = pd.read_csv(sequestration_potential_file, index_col=0)
+        if df.shape == (1, 1):
+            # if only one value, manually convert to a Series
+            e_nom_max = pd.Series(df.iloc[0, 0], index=df.index)
+        else:
+            e_nom_max = df.squeeze()
+
         e_nom_max = (
             e_nom_max.reindex(spatial.co2.locations)
             .fillna(0.0)
@@ -1978,35 +1995,40 @@ def add_storage_and_grids(
 
         # find all complement edges
         complement_edges = pd.DataFrame(complement(G).edges, columns=["bus0", "bus1"])
-        complement_edges["length"] = complement_edges.apply(
-            haversine, axis=1, args=(n,)
-        )
 
-        # apply k_edge_augmentation weighted by length of complement edges
-        k_edge = options["gas_network_connectivity_upgrade"]
-        if augmentation := list(
-            k_edge_augmentation(G, k_edge, avail=complement_edges.values)
-        ):
-            new_gas_pipes = pd.DataFrame(augmentation, columns=["bus0", "bus1"])
-            new_gas_pipes["length"] = new_gas_pipes.apply(haversine, axis=1, args=(n,))
-
-            new_gas_pipes.index = new_gas_pipes.apply(
-                lambda x: f"gas pipeline new {x.bus0} <-> {x.bus1}", axis=1
+        # check if network is already fully connected and only add new pipelines if not
+        if len(complement_edges) > 0:
+            complement_edges["length"] = complement_edges.apply(
+                haversine, axis=1, args=(n,)
             )
 
-            n.add(
-                "Link",
-                new_gas_pipes.index,
-                bus0=new_gas_pipes.bus0 + " gas",
-                bus1=new_gas_pipes.bus1 + " gas",
-                p_min_pu=-1,  # new gas pipes are bidirectional
-                p_nom_extendable=True,
-                length=new_gas_pipes.length,
-                capital_cost=new_gas_pipes.length
-                * costs.at["CH4 (g) pipeline", "capital_cost"],
-                carrier="gas pipeline new",
-                lifetime=costs.at["CH4 (g) pipeline", "lifetime"],
-            )
+            # apply k_edge_augmentation weighted by length of complement edges
+            k_edge = options["gas_network_connectivity_upgrade"]
+            if augmentation := list(
+                k_edge_augmentation(G, k_edge, avail=complement_edges.values)
+            ):
+                new_gas_pipes = pd.DataFrame(augmentation, columns=["bus0", "bus1"])
+                new_gas_pipes["length"] = new_gas_pipes.apply(
+                    haversine, axis=1, args=(n,)
+                )
+
+                new_gas_pipes.index = new_gas_pipes.apply(
+                    lambda x: f"gas pipeline new {x.bus0} <-> {x.bus1}", axis=1
+                )
+
+                n.add(
+                    "Link",
+                    new_gas_pipes.index,
+                    bus0=new_gas_pipes.bus0 + " gas",
+                    bus1=new_gas_pipes.bus1 + " gas",
+                    p_min_pu=-1,  # new gas pipes are bidirectional
+                    p_nom_extendable=True,
+                    length=new_gas_pipes.length,
+                    capital_cost=new_gas_pipes.length
+                    * costs.at["CH4 (g) pipeline", "capital_cost"],
+                    carrier="gas pipeline new",
+                    lifetime=costs.at["CH4 (g) pipeline", "lifetime"],
+                )
 
     if options["H2_retrofit"]:
         logger.info("Add retrofitting options of existing CH4 pipes to H2 pipes.")
@@ -2037,6 +2059,8 @@ def add_storage_and_grids(
         h2_pipes = create_network_topology(
             n, "H2 pipeline ", carriers=["DC", "gas pipeline"]
         )
+        h2_buses_loc = n.buses.query("carrier == 'H2'").location  # noqa: F841
+        h2_pipes = h2_pipes.query("bus0 in @h2_buses_loc and bus1 in @h2_buses_loc")
 
         # TODO Add efficiency losses
         n.add(
@@ -2215,6 +2239,7 @@ def add_EVs(
     temperature: pd.DataFrame,
     spatial: SimpleNamespace,
     options: dict,
+    investment_year, ##added Nov 7, 2025 by Katherie Shaw to decouple EV behavior
 ) -> None:
     """
     Add electric vehicle (EV) infrastructure to the network.
@@ -2352,13 +2377,14 @@ def add_EVs(
 
         # Add vehicle-to-grid if enabled
         if options["v2g"]:
+            print('V2G is enabled')
             n.add(
                 "Link",
                 spatial.nodes,
                 suffix=" V2G",
                 bus1=spatial.nodes,
                 bus0=spatial.nodes + " EV battery",
-                p_nom=p_nom * options["bev_dsm_availability"],
+                p_nom=p_nom * get(options['v2g_availability'], investment_year), #needs to be tested on Nov 7, will this make the v2g availabilty decoupled? #changed add_EV here and when add_land_transport to include investment year, now seeing if that will reigster
                 carrier="V2G",
                 p_max_pu=avail_profile.loc[n.snapshots, spatial.nodes],
                 lifetime=1,
@@ -2654,6 +2680,7 @@ def add_land_transport(
             temperature,
             spatial,
             options,
+            investment_year,
         )
 
     if shares["fuel_cell"] > 0:
@@ -2996,10 +3023,6 @@ def add_heat(
                 nodes + f" {heat_system} water tanks charger", "energy to power ratio"
             ] = energy_to_power_ratio_water_tanks
 
-            tes_time_constant_days = options["tes_tau"][
-                heat_system.central_or_decentral
-            ]
-
             n.add(
                 "Store",
                 nodes,
@@ -3008,7 +3031,11 @@ def add_heat(
                 e_cyclic=True,
                 e_nom_extendable=True,
                 carrier=f"{heat_system} water tanks",
-                standing_loss=1 - np.exp(-1 / 24 / tes_time_constant_days),
+                standing_loss=costs.at[
+                    heat_system.central_or_decentral + " water tank storage",
+                    "standing_losses",
+                ]
+                / 100,  # convert %/hour into unit/hour
                 capital_cost=costs.at[
                     heat_system.central_or_decentral + " water tank storage",
                     "capital_cost",
@@ -3020,7 +3047,7 @@ def add_heat(
 
             if heat_system == HeatSystem.URBAN_CENTRAL:
                 n.add("Carrier", f"{heat_system} water pits")
-
+            
                 n.add(
                     "Bus",
                     nodes + f" {heat_system} water pits",
@@ -3094,16 +3121,21 @@ def add_heat(
                 else:
                     e_max_pu = 1
 
+                #if not options['water_pits_extendable']:
+                #    logger.info('URBAN CENTRAL WATER PITS MANUALLY STIFLED ')
                 n.add(
                     "Store",
                     nodes,
                     suffix=f" {heat_system} water pits",
                     bus=nodes + f" {heat_system} water pits",
                     e_cyclic=True,
-                    e_nom_extendable=True,
+                    e_nom_extendable= True, #options['water_pits_extendable'], #originally this was given as tru
                     e_max_pu=e_max_pu,
                     carrier=f"{heat_system} water pits",
-                    standing_loss=1 - np.exp(-1 / 24 / tes_time_constant_days),
+                    standing_loss=costs.at[
+                        "central water pit storage", "standing_losses"
+                    ]
+                    / 100,  # convert %/hour into unit/hour
                     capital_cost=costs.at["central water pit storage", "capital_cost"],
                     lifetime=costs.at["central water pit storage", "lifetime"],
                 )
@@ -3191,6 +3223,7 @@ def add_heat(
                 n.add(
                     "Bus",
                     nodes,
+                    location=nodes,
                     suffix=f" {heat_carrier}",
                     carrier=heat_carrier,
                 )
@@ -3331,7 +3364,140 @@ def add_heat(
                 p_nom_extendable=True,
                 lifetime=costs.at[key, "lifetime"],
             )
+            ############################ Added by Katherine Shaw, Fall 2025 #############################################
+        if options.get('additional_hot_water_tanks'): #adding longer water tanks, specifically connected to the low voltage network
+            if ((investment_year in [2020, 2050]) and not (heat_system == HeatSystem.URBAN_CENTRAL)): #just want these additional stores in urban decentral and rural, also this is custom based on our investment year choices, can change 
+                #only for urban central and rural, #### Adding in a lot more heating storage: modelled after pypsa fes setup  
+                logger.info(f'Heat system is {heat_system}')
+                logger.info("Adding heat flexibility adding a hot water tank.")
 
+                standing_loss = options["water_tank_standing_loss"]
+                max_hours_value = options["water_tank_max_hours"]
+                n.add("Carrier", f"{heat_system} water storage tanks")
+                number_houses_with_additional_tanks = float(options['number_households'] /2) #have to divide the total number of nodes to get the additions per country, then /2 to get half to each type
+                storage_size = options['heat_storage_size']
+                logger.info(f' number households with additional tanks per country is {number_houses_with_additional_tanks}')
+                logger.info(f'The size of the individual storage heat battery is {storage_size * 1000} kWh')
+
+                pop_fraction_per_country = (pop_layout.total / (pop_layout.total.sum()))
+                logger.info(f'{pop_fraction_per_country}')
+                storage_per_country = storage_size * number_houses_with_additional_tanks * pop_fraction_per_country.values #at the oment still using 6kWh
+                logger.info(f'heating per country : {storage_per_country}')
+                logger.info(f'Nodes are {nodes}')
+                n.add(
+                    "Link",
+                    nodes + f" {heat_system} water storage tanks charger",
+                    bus0=nodes + f" {heat_system} heat",
+                    bus1=nodes + f" {heat_system} water tanks",
+                    efficiency=costs.at["water tank charger", "efficiency"],
+                    carrier=f"{heat_system} water tanks charger",
+                    p_nom_extendable=True,
+                )
+                n.add(
+                    "Bus",
+                    nodes + f" {heat_system} water tanks",
+                    location=nodes,
+                    carrier=f"{heat_system} water tanks",
+                    unit="MWh_th",
+                )
+                n.add(
+                    "Link",
+                    nodes + f" {heat_system} water storage tanks discharger",
+                    bus0=nodes + f" {heat_system} water tanks",
+                    bus1=nodes + f" {heat_system} heat",
+                    carrier=f"{heat_system} water tanks discharger",
+                    efficiency=costs.at["water tank discharger", "efficiency"],
+                    p_nom_extendable=True,
+                )
+                n.add(
+                    "Store",
+                    nodes + f" {heat_system} water storage tanks",
+                    bus=nodes + f" {heat_system} water tanks",
+                    e_nom=storage_per_country, #multiplied by number of households, then multiplied by countries population fraction
+                    e_nom_extendable=False,
+                    e_cyclic = True, # New as of Nov 19 
+                    carrier=f"{heat_system} water tanks",
+                    standing_loss=standing_loss,
+                    #max_hours=max_hours_value,
+                    #Changed capital cost to 0 on Nov 6, based on Nov 4 meeting to have EVs compare better to EV lack of additional cost 
+                    capital_cost= 0, ## costs.at[ heat_system.central_or_decentral + " water tank storage", "capital_cost",],
+                    lifetime=costs.at[
+                        heat_system.central_or_decentral + " water tank storage", "lifetime"
+                    ],
+                ) 
+
+        ###### Added to try to replicate Lukas's Version of heating flexiblity, with specific charging times##### 
+        #### we had stores but no thermal inertia, does thermal inertia help the most? #######
+        if options.get('Lukas_heat_implementation'):
+            mor_start = 7 #flex_config["heat_flex_windows"]["morning"]["start"]  # e.g., 7
+            mor_end = 9 #flex_config["heat_flex_windows"]["morning"]["end"]        # e.g., 9
+            eve_start = 17 #flex_config["heat_flex_windows"]["evening"]["start"]   # e.g., 17
+            eve_end = 19 #flex_config["heat_flex_windows"]["evening"]["end"]       # e.g., 19
+            shift_size = 3 #flex_config["heat_shift_size"]  # e.g., 3 hours
+            standing_loss = options["water_tank_standing_loss"]
+            hourly_heat_loss = 0 # options["water_tank_max_hours"], but could be anywhere from 0 to 1 
+
+            from scripts._helpers import (
+            configure_logging,
+            generate_periodic_profiles,
+            get_snapshots,
+            set_scenario_config,
+            )
+
+            snapshots = n.snapshots
+
+            intraday_profiles = pd.read_csv(snakemake.input.heat_profile, index_col=0) #had to add heat_profile to the input parameters for this function, it leads to the BDEW load profile
+
+            
+            daily_space_heat_demand = (
+                xr.open_dataarray(snakemake.input.heat_demand)
+                .to_pandas()
+                .reindex(index=snapshots, method="ffill")
+            )
+
+            pop_weighted_energy_totals = pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
+            #logger.info(pop_weighted_energy_totals)
+
+
+            sectors = ["residential"]
+            uses = ["water", "space"]
+            heat_demand = {}
+            
+            for sector, use in product(sectors, uses):
+                logger.info(f"{sector}, {use}")
+                pop_energy_total = pop_weighted_energy_totals[f'total {sector} {use}']
+                weekday = list(intraday_profiles[f"{sector} {use} weekday"])
+                weekend = list(intraday_profiles[f"{sector} {use} weekend"])
+                weekly_profile = weekday * 5 + weekend * 2
+                intraday_year_profile = generate_periodic_profiles(
+                    daily_space_heat_demand.index.tz_localize("UTC"),
+                    nodes=daily_space_heat_demand.columns,
+                    weekly_profile=weekly_profile,
+                )
+
+                if use == "space":
+                    heat_demand_shape = daily_space_heat_demand * intraday_year_profile
+                else:
+                    heat_demand_shape = intraday_year_profile
+                sector = "residential"
+
+                
+                #logger.info('heat demand working without the multiplication?')
+                #logger.info((heat_demand_shape / heat_demand_shape.sum()).multiply(pop_energy_total))
+
+                heat_demand[f"{sector} {use}"] = ( heat_demand_shape / heat_demand_shape.sum()
+                ).multiply(pop_energy_total) * 1e6
+
+            logger.info(heat_demand)   
+            #heat_demand = pd.concat(heat_demand, axis=1)
+            #heat_demand = pd.DataFrame({
+            #    region: heat_demand[[col for col in heat_demand.columns if region in col]].sum(axis=1)
+            #    for region in daily_space_heat_demand.columns
+            #})
+           
+
+
+            ##########################################################################################
         if options["boilers"]:
             key = f"{heat_system.central_or_decentral} gas boiler"
 
@@ -5705,7 +5871,7 @@ def set_temporal_aggregation(n, resolution, snapshot_weightings):
             .map(lambda i: snapshot_weightings.index[i])
         )
 
-        m = n.copy(with_time=False)
+        m = n.copy(snapshots=[])
         m.set_snapshots(snapshot_weightings.index)
         m.snapshot_weightings = snapshot_weightings
 

@@ -2,6 +2,25 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+#To do 
+#test, is their a wierd amount of geothermal? 
+#with no additional flex, how does this compare with the 2020 performance
+#Test run of BAU version 3, out to 2050, compare with previous BAU results
+#Test run of BAU version 4, compare with BAU before
+#Implement constraints in the script files and run them 
+
+#
+#Structural changes from last time, 
+#shipping oil share 
+#co2 network 
+#biomass spaciallly resolved, biomass transport == true (to match co2, coal, etc), but if calculation time is to high, will simplify
+#biomass to methanol, methanol to power : false --> true
+
+
+private:
+  keys:
+    entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#top-level-configuration
 version: v2025.07.0
 tutorial: false
@@ -29,18 +48,22 @@ run:
   use_shadow_directory: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
-foresight: overnight
+foresight: myopic 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
   clusters:
-  - 50
-  opts:
-  - ''
+  - 39
   sector_opts:
   - ''
   planning_horizons:
+  - 2020
+  - 2025 #### CHANGED FOR TEST JAN 23, might be better to make a copy of this configuration file.
+  - 2030
+  #- 2035
+  - 2040
+  #- 2045
   - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
@@ -82,8 +105,8 @@ countries:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
 snapshots:
-  start: "2013-01-01"
-  end: "2014-01-01"
+  start: "2019-01-01"
+  end: "2020-01-01"
   inclusive: 'left'
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
@@ -100,9 +123,9 @@ co2_budget:
   2020: 0.720 # average emissions of 2019 to 2021 relative to 1990, CO2 excl LULUCF, EEA data, European Environment Agency. (2023a). Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
   2025: 0.648 # With additional measures (WAM) projection, CO2 excl LULUCF, European Environment Agency. (2023e). Member States’ greenhouse gas (GHG) emission projections 2023. https://www.eea.europa.eu/en/datahub/datahubitem-view/4b8d94a4-aed7-4e67-a54c-0623a50f48e8
   2030: 0.450 # 55% reduction by 2030 (Ff55)
-  2035: 0.250
+  #2035: 0.250
   2040: 0.100 # 90% by 2040
-  2045: 0.050
+  #2045: 0.050
   2050: 0.000 # climate-neutral by 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#electricity
@@ -128,14 +151,13 @@ electricity:
 
   extendable_carriers:
     Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT]
-    StorageUnit: [] # battery, H2
+    StorageUnit: [battery] # battery, H2
     Store: [battery, H2]
-    Link: [] # H2 pipeline
+    Link: [H2 pipeline] # H2 pipeline
 
-  powerplants_filter: (DateOut >= 2024 or DateOut != DateOut) and not (Country == 'Germany' and Fueltype == 'Nuclear')
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut) #this date-out was previously 2024 with the new version, changed to 2020
   custom_powerplants: false
   everywhere_powerplants: []
-
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
 
@@ -145,9 +167,9 @@ electricity:
     year: 2020
     expansion_limit: false
     technology_mapping:
-      Offshore: offwind-ac
+      Offshore: offwind-ac #was [offwind-ac, offwind-dc, offwind-float] in origninal file 
       Onshore: onwind
-      PV: solar
+      PV: solar 
 
   autarky:
     enable: false
@@ -158,27 +180,27 @@ electricity:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#atlite
 atlite:
   cutout_directory: cutouts
-  default_cutout: europe-2013-sarah3-era5
+  default_cutout: europe-2019-sarah3-era5
   nprocesses: 16
   show_progress: false
   cutouts:
     # use 'base' to determine geographical bounds and time span from config
     # base:
       # module: era5
-    europe-2013-sarah3-era5:
+    europe-2019-sarah3-era5:
       module: [sarah, era5] # in priority order
       x: [-12., 42.]
       y: [33., 72.]
       dx: 0.3
       dy: 0.3
-      time: ['2013', '2013']
+      time: ['2019', '2020']
       # features: [] 
       # sarah_dir: ""
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#renewable
 renewable:
   onwind:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -199,7 +221,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 1.e-2
   offwind-ac:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -218,7 +240,7 @@ renewable:
     clip_p_max_pu: 1.e-2
     landfall_length: 20
   offwind-dc:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -237,7 +259,7 @@ renewable:
     clip_p_max_pu: 1.e-2
     landfall_length: 30
   offwind-float:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -259,7 +281,7 @@ renewable:
     clip_p_max_pu: 1.e-2
     landfall_length: 40
   solar:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     resource:
       method: pv
       panel: CSi
@@ -275,7 +297,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 1.e-2
   solar-hsat:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     resource:
       method: pv
       panel: CSi
@@ -291,7 +313,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 1.e-2
   hydro:
-    cutout: default
+    cutout: europe-2019-sarah3-era5
     carriers: [ror, PHS, hydro]
     PHS_max_hours: 6
     hydro_max_hours: energy_capacity_totals_by_country # one of energy_capacity_totals_by_country, estimate_by_large_installations or a float
@@ -305,7 +327,7 @@ renewable:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
   unit_commitment: false
-  dynamic_fuel_price: false
+  dynamic_fuel_price: true
   nuclear:
     p_max_pu: data/nuclear_p_max_pu.csv # float of file name
 
@@ -391,12 +413,24 @@ load:
 # some technologies are removed because they are implemented differently
 # (e.g. battery or H2 storage) or have different year-dependent costs
 # in PyPSA-Eur-Sec
-pypsa_eur:
+pypsa_eur: #I think I need to add in conventional generators and buses into the file here, because right now the electric component carriers 
+#are only the carriers that are given here, I think what is happening is that pypsa-eur when merging with the sector additions gets trimmed, and it's pruning too much
+
   Bus:
-  - AC
+  - AC  
+  - gas
+  - lignite
+  - coal 
+  - oil
   Link:
   - DC
+  - OCGT
+  - CCGT
+  - lignite
+  - biomass
+  - coal 
   Generator:
+  #- oil
   - onwind
   - offwind-ac
   - offwind-dc
@@ -405,10 +439,23 @@ pypsa_eur:
   - solar
   - ror
   - nuclear
+  #- biomass
+  #- coal
+  #- OCGT #added these to see if it would cause the model to use more gas but it didn't 
+  #- CCGT #added these in to see if it would cause the model to use more gas but it didn't 
+  #- lignite
+  #- solid biomass #because this is included in sector, does it need to be included here? #including this didn't make solid biomass have a carbon value, also it's still included in links, my guess
+  - geothermal 
+  #- oil #once removed oil because agriculture and industry were not solving as sectors, kept saying that the spatial.nodes.oil bus wasn't created in scripts/prepare_sector_network.py, so maybe it's because oil should be considered a carrier not a generator
+  #led to biomass being used everywhere??? [Friday April 25], and a huge huge overestimation of generation 
   StorageUnit:
   - PHS
   - hydro
   Store: []
+
+#################################################################
+forced_gas_constraint: true  
+#############################################################
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#energy
 energy:
@@ -479,6 +526,84 @@ existing_capacities:
   - coal
   - oil
   - uranium
+  - gas #added, not in default 
+
+
+###################################
+##################################
+#Change top-line flexibility options here
+
+limit_capacity_by_country : false #false means that the limits applied to all of Europe, true means the structure has to mimic pypsa DE and apply to the whole country
+## CUSTOM CONSTRAINT of Carrier Specific Capacity Growth (Modelled AFTER FUNCTION IN PYPSA DE)
+limits_capacity_max: #if this config flag is here, it triggers the capacity limits (sense = maximum)
+  Link:
+    H2 Electrolysis: #in GW
+      2020: 0.000018
+      2025: 0.000012
+      2030: 0.000006
+      2040: 443.500963
+      2050: 443.492962
+    SMR: 
+      2020: 16.696187
+      2025: 16.809927
+      2030: 16.923667
+      2040: 16.909743
+      2050: 0.243199
+    SRM_cc:
+      2020: 0.000169
+      2025: 0.000107
+      2030: 0.000045
+      2040: 0.000358
+      2050: 0.000008
+    ammonia cracker:
+      2020: 0.000033
+      2025: 0.0000215
+      2030: 0.000010
+      2040: 0.000312
+      2050: 0.000012
+    solid biomass to hydrogen:
+      2020: 0.000015
+      2025: 0.000010
+      2030: 0.000005
+      2040: 0.000140
+      2050: 0.000003
+#From BAU without carbon sequestration
+#limits_capacity_max: #if this config flag is here, it triggers the capacity limits (sense = maximum)
+#  Link:
+#    H2 Electrolysis: #in GW
+#      2020: 0.000017
+#      2030: 0.000012
+#      2040: 208.377941
+#      2050: 208.373376
+    #H2 Electrolysis: # in GW
+    #  2020: 0.0000016 #limit matches with existing capacity built for 2020? For 2023: 258 MW source: https://observatory.clean-hydrogen.europa.eu/sites/default/files/2024-11/The%20European%20hydrogen%20market%20landscape_November%202024.pdf
+    #  2030: 0.00000136 #see table in Project Logbook Notes
+    #  2040: 424.84942
+    #  2050: 424.84848
+#    SMR: 
+#      2020: 18.214006
+#      2030: 18.461094
+#      2040: 18.430043
+#      2050: 2.905622
+#    SRM_cc:
+#      2020: 0.000160
+#      2030: 0.000112
+#      2040: 0.000039
+#      2050: 0.00004
+#    ammonia cracker:
+#      2020: 0.000032
+#      2030: 0.000024
+#      2040: 0.000036
+#      2050: 0.000016
+#    solid biomass to hydrogen:
+#      2020: 0.000014
+#      2030: 0.000012
+#      2040: 0.000014
+#      2050: 0.000005
+
+
+###################################
+##################################
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
@@ -563,7 +688,28 @@ sector:
     - ground
   cluster_heat_buses: true
   heat_demand_cutout: default
-  bev_dsm_restriction_value: 0.8
+
+  ### Flexibility Enablers###
+  bev_dsm: false #see bev_dsm availability ######################
+  bev_dsm_availability: .3  #DSM availability changed in each scenario
+  bev_dsm_restriction_value: 0.8 #was .75 in old version
+  v2g: false #set v2g availability######################
+  v2g_availability: #0.5 #as a fraction of DSM availability
+    2020: 0
+    2025: .08
+    2030: .15
+    2040: .35
+    2050: .80
+
+
+  additional_hot_water_tanks: false #for adding additional hot water tanks######################
+  number_households: 50000000  #50% of EU households #per heating system
+  water_tank_standing_loss: 0.02
+  water_tank_max_hours: 12 
+  Lukas_heat_implementation: false 
+  heat_storage_size: 0.006 #0.006 #in MWh
+
+  ###BEV related flags 
   bev_dsm_restriction_time: 7
   transport_heating_deadband_upper: 20.
   transport_heating_deadband_lower: 15.
@@ -571,14 +717,13 @@ sector:
   ICE_upper_degree_factor: 1.6
   EV_lower_degree_factor: 0.98
   EV_upper_degree_factor: 0.63
-  bev_dsm: true
-  bev_dsm_availability: 0.5
   bev_energy: 0.05
   bev_charge_efficiency: 0.9
   bev_charge_rate: 0.011
   bev_avail_max: 0.95
   bev_avail_mean: 0.8
-  v2g: true
+
+
   land_transport_fuel_cell_share:
     2020: 0
     2025: 0
@@ -589,20 +734,22 @@ sector:
     2050: 0
   land_transport_electric_share:
     2020: 0
-    2025: 0.05
-    2030: 0.2
+    2025: 0.15
+    2030: 0.3
     2035: 0.45
     2040: 0.7
     2045: 0.85
     2050: 1
   land_transport_ice_share:
     2020: 1
-    2025: 0.95
-    2030: 0.8
+    2025: 0.85
+    2030: 0.7
     2035: 0.55
     2040: 0.3
     2045: 0.15
     2050: 0
+
+  
   transport_electric_efficiency: 53.19 # 1 MWh_el = 53.19*100 km
   transport_fuel_cell_efficiency: 30.003 # 1 MWh_H2 = 30.003*100 km
   transport_ice_efficiency: 16.0712 # 1 MWh_oil = 16.0712 * 100 km
@@ -614,7 +761,7 @@ sector:
   MWh_MeOH_per_tCO2: 4.0321
   MWh_MeOH_per_MWh_e: 3.6907
   shipping_hydrogen_liquefaction: false
-  shipping_hydrogen_share:
+  shipping_hydrogen_share: #this is pushed back compared to previous version, but I aggree
     2020: 0
     2025: 0
     2030: 0
@@ -643,6 +790,8 @@ sector:
   aviation_demand_factor: 1.
   HVC_demand_factor: 1.
   time_dep_hp_cop: true
+
+  ## Heat related flags
   heat_pump_sink_T_individual_heating: 55.
   reduce_space_heat_exogenously: true
   reduce_space_heat_exogenously_factor:
@@ -676,6 +825,8 @@ sector:
     micro_chp: false # Only gas is used for micro_chp
   solar_thermal: true
   solar_cf_correction: 0.788457  # =  >>> 1/1.2683
+
+  #CO2 and H2 related Flags
   methanation: true
   coal_cc: false
   dac: true
@@ -695,26 +846,40 @@ sector:
   regional_co2_sequestration_potential:
     enable: true
     attribute:
-    - conservative estimate Mt
+    - conservative estimate Mt #this is the only one Lukas had enabled, Bobby's work also included the Gas and OIl
     - conservative estimate GAS Mt
     - conservative estimate OIL Mt
-    - conservative estimate aquifer Mt
+    #- conservative estimate aquifer Mt
     include_onshore: false
     min_size: 3
     max_size: 25
     years_of_storage: 25
-  co2_sequestration_potential:
+  co2_sequestration_potential: #this is in MT
     2020: 0
     2025: 0
-    2030: 40
-    2035: 100
-    2040: 180
-    2045: 250
-    2050: 250
+    2030: 50 # (exogenous) default: 50
+    2035: 115 # ((2040-2030)/2) + 2030 default: 100, at the moment 2035 not in the planning horizon 
+    2040: 280 #default: 200
+    2045: 365 # ((2050-2040)/2) + 2040 default: 200, at the moment 2045 not in the planning horizon
+    2050: 450 #default: 200 #150 solved with BAU, no other sequestration, but 100 did not 
+    #2020: 0 default values, much lower than ours 
+    #2025: 0
+    #2030: 40
+    #2035: 100
+    #2040: 180
+    #2045: 250
+    #2050: 250
+    #2020: 0
+    #2025: 0
+    #2030: 0 #50 # (exogenous) default: 50
+    #2035: 0 #115 # ((2040-2030)/2) + 2030 default: 100, at the moment 2035 not in the planning horizon 
+    #2040: 0 #280 #default: 200
+    #2045: 0 #365 # ((2050-2040)/2) + 2040 default: 200, at the moment 2045 not in the planning horizon
+    #2050: 150 #450 #default: 200 #150 solved with BAU, no other sequestration, but 100 did not 
   co2_sequestration_cost: 30
   co2_sequestration_lifetime: 50
   co2_spatial: true
-  co2_network: true
+  co2_network: true #this was false in the last configuration file, set to true here, thoughts on carbon dioxide transmission network
   co2_network_cost_factor: 1
   cc_fraction: 0.9
   hydrogen_underground_storage: true
@@ -730,9 +895,9 @@ sector:
     methanol_to_power:
       ccgt: false
       ccgt_cc: false
-      ocgt: true
+      ocgt: true #this used to be false in the old file, allow methanol to power? what is the cost basis here?
       allam: false
-    biomass_to_methanol: true
+    biomass_to_methanol: true #this was false in the old file, allow biomass to methanol? The model should decide if it's valuable, look into cost of...
     biomass_to_methanol_cc: false
   ammonia: true
   min_part_load_fischer_tropsch: 0.5
@@ -744,6 +909,7 @@ sector:
   use_methanation_waste_heat: 0.25
   use_fuel_cell_waste_heat: 1
   use_electrolysis_waste_heat: 0.25
+
   electricity_transmission_grid: true
   electricity_distribution_grid: true
   electricity_grid_connection: true
@@ -764,27 +930,38 @@ sector:
       compression_per_1000km: 0.01
     electricity distribution grid:
       efficiency_static: 0.97
+
   H2_network: true
   gas_network: true
-  H2_retrofit: false
+  H2_retrofit: true #can retrofit gas lines for H2, if economical 
   H2_retrofit_capacity_per_CH4: 0.6
   gas_network_connectivity_upgrade: 1
   gas_distribution_grid: true
   gas_distribution_grid_cost_factor: 1.0
-  biomass_spatial: true
-  biomass_transport: false
+
+
+  ##Biomass related flags
+  biomass_spatial:  true #default = true, adds options for resolving biomass demand regionally
+  biomass_transport: true #default = true, adds options for resolving biomass demand regionally
+
   biogas_upgrading: true
   biogas_upgrading_cc: false
   conventional_generation:
     OCGT: gas
     CCGT: gas
-  biomass_to_liquid: true
+    coal: coal #not in default 
+    lignite: lignite # not in default 
+
+  #to match BAU choices before, biomass limited as a fuel outside of biogas
+  biomass_to_liquid: false
   biomass_to_liquid_cc: false
-  electrobiofuels: true
-  biosng: false
-  biosng_cc: false
-  bioH2: false
+  electrobiofuels: false
+  biosng: false #bio-synthetic gas may be more likely, but would still require imports
+  biosng_cc: false #bio-synthetic gas may be more likely, but wouuld still require imports 
+  bioH2: true 
   municipal_solid_waste: false
+
+
   limit_max_growth:
     enable: false
     # allowing 30% larger than max historic growth
@@ -915,7 +1092,7 @@ industry:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030 #changed to 2030 to matche previous runs 
   version: v0.13.3
   social_discountrate: 0.02
   fill_values:
@@ -946,6 +1123,11 @@ costs:
     enable: false
     co2: 0.
     co2_monthly_prices: false
+  #in third run BAU, had 
+  #emission_prices:
+  #  enable: true
+  #  co2: 15.0 #EUR/tCO2
+  #  co2_monthly_prices: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#clustering
 clustering:
@@ -975,7 +1157,7 @@ clustering:
       ramp_limit_down: max
   temporal:
     resolution_elec: false
-    resolution_sector: 26H
+    resolution_sector: 6H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:

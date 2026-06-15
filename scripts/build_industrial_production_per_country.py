@@ -164,9 +164,19 @@ ch_mapping = {
 
 
 def find_physical_output(df):
-    start = np.where(df.index.str.contains("Physical output", na=""))[0][0]
+    physical_output = np.flatnonzero(df.index.str.contains("Physical output", na=False))
+    if not len(physical_output):
+        raise ValueError("Could not locate 'Physical output' section in JRC-IDEES sheet.")
+
+    start = physical_output[0]
     empty_row = np.where(df.index.isnull())[0]
-    end = empty_row[np.argmax(empty_row > start)]
+    following_empty_rows = empty_row[empty_row > start]
+    if not len(following_empty_rows):
+        raise ValueError(
+            "Could not locate the end of the 'Physical output' section in JRC-IDEES sheet."
+        )
+
+    end = following_empty_rows[0]
     return slice(start, end)
 
 

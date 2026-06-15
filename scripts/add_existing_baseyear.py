@@ -155,6 +155,7 @@ def add_power_capacities_installed_before_baseyear(
     capacity_threshold: float,
     lifetime_values: dict[str, float],
     renewable_carriers: list[str],
+    include_biomass_chp: bool = True,
 ) -> None:
     """
     Add power generation capacities installed before base year.
@@ -216,14 +217,29 @@ def add_power_capacities_installed_before_baseyear(
     df_agg.drop(df_agg.index[df_agg.Technology.isin(technology_to_drop)], inplace=True)
     df_agg.Fueltype = df_agg.Fueltype.map(rename_fuel)
 
+    if not include_biomass_chp:
+        biomass_chp = df_agg.index[df_agg.Fueltype == "urban central solid biomass CHP"]
+        if not biomass_chp.empty:
+            logger.info(
+                "Biomass sector disabled. Dropping %s existing solid biomass CHP assets "
+                "from the baseyear network.",
+                len(biomass_chp),
+            )
+            df_agg.drop(biomass_chp, inplace=True)
+
     # Intermediate fix for DateIn & DateOut
     # Fill missing DateIn
     biomass_i = df_agg.loc[df_agg.Fueltype == "urban central solid biomass CHP"].index
-    mean = df_agg.loc[biomass_i, "DateIn"].mean()
-    df_agg.loc[biomass_i, "DateIn"] = df_agg.loc[biomass_i, "DateIn"].fillna(int(mean))
-    # Fill missing DateOut
-    dateout = df_agg.loc[biomass_i, "DateIn"] + lifetime_values["lifetime"]
-    df_agg.loc[biomass_i, "DateOut"] = df_agg.loc[biomass_i, "DateOut"].fillna(dateout)
+    if not biomass_i.empty:
+        mean = df_agg.loc[biomass_i, "DateIn"].mean()
+        df_agg.loc[biomass_i, "DateIn"] = df_agg.loc[biomass_i, "DateIn"].fillna(
+            int(mean)
+        )
+        # Fill missing DateOut
+        dateout = df_agg.loc[biomass_i, "DateIn"] + lifetime_values["lifetime"]
+        df_agg.loc[biomass_i, "DateOut"] = df_agg.loc[biomass_i, "DateOut"].fillna(
+            dateout
+        )
 
     # include renewables in df_agg
     add_existing_renewables(
@@ -764,6 +780,7 @@ if __name__ == "__main__":
         capacity_threshold=snakemake.params.existing_capacities["threshold_capacity"],
         lifetime_values=snakemake.params.costs["fill_values"],
         renewable_carriers=renewable_carriers,
+        include_biomass_chp=options["biomass"],
     )
 
     if options["heating"]:

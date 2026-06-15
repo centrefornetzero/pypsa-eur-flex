@@ -20,7 +20,7 @@ gurobi.log
 /networks
 /benchmarks
 /logs
-/notebooks
+/notebooks/entsoe*
 /data
 /cutouts
 /tmp
@@ -68,7 +68,6 @@ d1gam3xoknrgr2.cloudfront.net/
 
 *.geojson
 
-*.ipynb
 
 merger-todos.md
 

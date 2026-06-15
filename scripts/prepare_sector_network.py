@@ -2377,14 +2377,20 @@ def add_EVs(
 
         # Add vehicle-to-grid if enabled
         if options["v2g"]:
-            print('V2G is enabled')
+            v2g_availability = options.get("v2g_availability")
+            if v2g_availability is None:
+                logger.warning(
+                    "Missing 'v2g_availability' in sector options. Falling back to 'bev_dsm_availability'."
+                )
+                v2g_availability = options["bev_dsm_availability"]
+
             n.add(
                 "Link",
                 spatial.nodes,
                 suffix=" V2G",
                 bus1=spatial.nodes,
                 bus0=spatial.nodes + " EV battery",
-                p_nom=p_nom * get(options['v2g_availability'], investment_year), #needs to be tested on Nov 7, will this make the v2g availabilty decoupled? #changed add_EV here and when add_land_transport to include investment year, now seeing if that will reigster
+                p_nom=p_nom * get(v2g_availability, investment_year),
                 carrier="V2G",
                 p_max_pu=avail_profile.loc[n.snapshots, spatial.nodes],
                 lifetime=1,

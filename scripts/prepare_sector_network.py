@@ -24,6 +24,7 @@ from scipy.stats import beta
 from scripts._helpers import (
     configure_logging,
     get,
+    get_current_year,
     set_scenario_config,
     update_config_from_wildcards,
 )
@@ -47,6 +48,24 @@ from scripts.prepare_network import maybe_adjust_costs_and_potentials
 
 spatial = SimpleNamespace()
 logger = logging.getLogger(__name__)
+
+
+def use_historical_horizon(
+    configured_foresight: str, planning_horizons, current_year: int | None, investment_year: int | None
+) -> bool:
+    """
+    Treat the first historical horizon of a multi-horizon myopic run as historical.
+    """
+    if configured_foresight != "myopic" or investment_year is None or current_year is None:
+        return False
+
+    if investment_year >= current_year:
+        return False
+
+    if not isinstance(planning_horizons, list):
+        planning_horizons = [planning_horizons]
+
+    return len(planning_horizons) > 1
 
 
 def define_spatial(nodes, options):
@@ -6363,8 +6382,24 @@ if __name__ == "__main__":
     heating_efficiencies = pd.read_csv(fn, index_col=[1, 0]).loc[year]
 
     spatial = define_spatial(pop_layout.index, options)
+    historical_horizon = use_historical_horizon(
+        snakemake.params.foresight,
+        snakemake.params.planning_horizons,
+        get_current_year(snakemake.config),
+        investment_year,
+    )
+    effective_foresight = (
+        "overnight" if historical_horizon else snakemake.params.foresight
+    )
 
-    if snakemake.params.foresight in ["myopic", "perfect"]:
+    if historical_horizon:
+        logger.info(
+            "Treating planning horizon %s as a historical baseline: "
+            "using overnight sector-network construction branches.",
+            investment_year,
+        )
+
+    if effective_foresight in ["myopic", "perfect"]:
         add_lifetime_wind_solar(n, costs)
 
         conventional = snakemake.params.conventional_carriers
@@ -6627,7 +6662,7 @@ if __name__ == "__main__":
         )
         n.remove("Line", idx)
 
-    first_year_myopic = (snakemake.params.foresight in ["myopic", "perfect"]) and (
+    first_year_myopic = (effective_foresight in ["myopic", "perfect"]) and (
         snakemake.params.planning_horizons[0] == investment_year
     )
 

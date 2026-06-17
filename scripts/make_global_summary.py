@@ -61,6 +61,11 @@ if __name__ == "__main__":
         summaries = []
         for _, filename in summaries_dict.items():
             s = pd.read_csv(filename, index_col=list(range(INDEX_COLS[kind])))
+            # Empty summary files can lose their value column when read back
+            # with all configured index columns. Keep a placeholder data
+            # column so each scenario still contributes one output column.
+            if s.shape[1] == 0:
+                s = pd.DataFrame(index=s.index, columns=[0], dtype=float)
             summaries.append(s)
 
         summaries = pd.concat(summaries, axis=1)

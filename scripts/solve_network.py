@@ -48,6 +48,7 @@ from scripts._helpers import (
     PYPSA_V1,
     configure_logging,
     get,
+    get_current_year,
     set_scenario_config,
     update_config_from_wildcards,
 )
@@ -63,6 +64,146 @@ else:
 
 class ObjectiveValueError(Exception):
     pass
+
+
+def is_historical_horizon(
+    config: dict, planning_horizons: str | None
+) -> bool:
+    """
+    Treat the first historical horizon of a multi-horizon myopic run as historical.
+
+    This mode is intended for runs like ``[2025, 2030, ...]`` where the first
+    year should behave like a fixed-capacity historical baseline rather than an
+    investment period.
+    """
+    if config.get("foresight") != "myopic" or planning_horizons is None:
+        return False
+    
+    current_year = get_current_year(config)
+    if current_year is None:
+        return False
+
+    scenario_horizons = config.get("scenario", {}).get("planning_horizons", [])
+    if len(scenario_horizons) <= 1:
+        return False
+
+    try:
+        year = int(str(planning_horizons)[-4:])
+    except (TypeError, ValueError):
+        return False
+
+    return year < current_year
+
+
+def get_effective_foresight(config: dict, planning_horizons: str | None) -> str:
+    """
+    Return the foresight branch that should be used for the current horizon.
+    """
+    if is_historical_horizon(config, planning_horizons):
+        return "overnight"
+    return config.get("foresight", "overnight")
+
+
+def disable_electricity_system_expansion(n: pypsa.Network) -> None:
+    """
+    Freeze electricity-side expansion while leaving non-electric sector build-out
+    available in the historical horizon.
+    """
+    electric_bus_carriers = {"AC", "low voltage"}
+    electric_internal_bus_carriers = {"AC", "low voltage", "battery", "home battery"}
+    electric_store_carriers = {"battery", "home battery", "EV battery"}
+    historical_service_link_carriers = {
+        "electricity distribution grid",
+        "land transport oil",
+    }
+    component_specs = (
+        ("Generator", "p_nom", "p_nom_extendable", "p_nom_min"),
+        ("Link", "p_nom", "p_nom_extendable", "p_nom_min"),
+        ("StorageUnit", "p_nom", "p_nom_extendable", "p_nom_min"),
+        ("Store", "e_nom", "e_nom_extendable", "e_nom_min"),
+        ("Line", "s_nom", "s_nom_extendable", "s_nom_min"),
+    )
+
+    for component, nominal, extendable, minimum in component_specs:
+        df = n.df(component)
+        if extendable not in df.columns:
+            continue
+
+        extendable_i = df.index[df[extendable].fillna(False)]
+        if extendable_i.empty:
+            continue
+
+        if component == "Generator":
+            bus_carrier = df.loc[extendable_i, "bus"].map(n.buses.carrier)
+            extendable_i = extendable_i.intersection(
+                bus_carrier.index[bus_carrier.isin(electric_bus_carriers)]
+            )
+        elif component == "StorageUnit":
+            bus_carrier = df.loc[extendable_i, "bus"].map(n.buses.carrier)
+            extendable_i = extendable_i.intersection(
+                bus_carrier.index[bus_carrier.isin(electric_bus_carriers)]
+            )
+        elif component == "Store":
+            bus_carrier = df.loc[extendable_i, "bus"].map(n.buses.carrier)
+            store_carrier = (
+                df.loc[extendable_i, "carrier"]
+                if "carrier" in df.columns
+                else pd.Series("", index=extendable_i)
+            )
+            freeze_mask = bus_carrier.isin(electric_internal_bus_carriers) | (
+                store_carrier.isin(electric_store_carriers)
+            )
+            extendable_i = extendable_i.intersection(freeze_mask.index[freeze_mask])
+        elif component == "Link":
+            bus_cols = [col for col in df.columns if col.startswith("bus")]
+            connected_bus_carriers = pd.DataFrame(index=extendable_i)
+            for col in bus_cols:
+                connected_bus_carriers[col] = (
+                    df.loc[extendable_i, col].replace("", pd.NA).map(n.buses.carrier)
+                )
+
+            has_heat_bus = connected_bus_carriers.apply(
+                lambda s: s.fillna("").str.contains("heat"),
+            ).any(axis=1)
+            bus1_carrier = connected_bus_carriers.get(
+                "bus1",
+                pd.Series(pd.NA, index=extendable_i),
+            )
+            bus1_is_electric = bus1_carrier.isin(electric_bus_carriers)
+            all_buses_are_internal_electric = connected_bus_carriers.apply(
+                lambda s: s.isin(electric_internal_bus_carriers) | s.isna(),
+            ).all(axis=1)
+            freeze_mask = ~has_heat_bus & (
+                bus1_is_electric | all_buses_are_internal_electric
+            )
+            extendable_i = extendable_i.intersection(freeze_mask.index[freeze_mask])
+
+            exempt_i = df.index[df.carrier.isin(historical_service_link_carriers)]
+            exempt_i = extendable_i.intersection(exempt_i)
+            if not exempt_i.empty:
+                logger.info(
+                    "Keeping %s service link(s) expandable in historical mode: %s",
+                    len(exempt_i),
+                    sorted(df.loc[exempt_i, "carrier"].unique()),
+                )
+                extendable_i = extendable_i.difference(exempt_i)
+
+        if extendable_i.empty:
+            continue
+
+        if nominal in df.columns:
+            nominal_now = df.loc[extendable_i, nominal].fillna(0.0)
+            minimum_now = (
+                df.loc[extendable_i, minimum].fillna(0.0)
+                if minimum in df.columns
+                else pd.Series(0.0, index=extendable_i)
+            )
+            df.loc[extendable_i, nominal] = pd.concat(
+                [nominal_now, minimum_now], axis=1
+            ).max(axis=1)
+
+        df.loc[extendable_i, extendable] = False
+        logger.info("Disabled electricity-side expansion for %s %s(s).", len(extendable_i), component)
 
 
 def add_land_use_constraint_perfect(n: pypsa.Network) -> None:
@@ -1648,6 +1789,14 @@ def solve_network(
     ObjectiveValueError
         If objective value differs from expected value
     """
+    if is_historical_horizon(config, planning_horizons):
+        logger.info(
+            "Treating planning horizon %s as a historical baseline: "
+            "electricity-side expansion is disabled and myopic-only solve behavior is skipped.",
+            planning_horizons,
+        )
+        disable_electricity_system_expansion(n)
+
     set_of_options = solving["solver"]["options"]
     cf_solving = solving["options"]
 
@@ -1742,11 +1891,22 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
     planning_horizons = snakemake.wildcards.get("planning_horizons", None)
+    effective_foresight = get_effective_foresight(
+        snakemake.config, planning_horizons
+    )
+
+    if effective_foresight != snakemake.params.foresight:
+        logger.info(
+            "Overriding configured foresight '%s' with '%s' for planning horizon %s.",
+            snakemake.params.foresight,
+            effective_foresight,
+            planning_horizons,
+        )
 
     prepare_network(
         n,
         solve_opts=snakemake.params.solving["options"],
-        foresight=snakemake.params.foresight,
+        foresight=effective_foresight,
         planning_horizons=planning_horizons,
         co2_sequestration_potential=snakemake.params["co2_sequestration_potential"],
         limit_max_growth=snakemake.params.get("sector", {}).get("limit_max_growth"),

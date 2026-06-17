@@ -68,6 +68,22 @@ def get_rdir(run):
     return RDIR
 
 
+def get_current_year(config: dict) -> int | None:
+    """
+    Return the scenario current year, falling back to the legacy scenario year.
+    """
+    scenario_config = config.get("scenario", {})
+    current_year = scenario_config.get("current_year", scenario_config.get("year"))
+
+    if current_year is None:
+        return None
+
+    try:
+        return int(current_year)
+    except (TypeError, ValueError):
+        return None
+
+
 def get_run_path(fn, dir, rdir, shared_resources, exclude_from_shared):
     """
     Dynamically provide paths based on shared resources and filename.

@@ -554,6 +554,13 @@ def add_heating_capacities_installed_before_baseyear(
             n.buses.location[n.buses.index.str.contains(f"{heat_system} heat")]
         )
 
+        if nodes.empty:
+            logger.info(
+                "Skipping existing heating capacities for %s because no matching heat buses are present.",
+                heat_system,
+            )
+            continue
+
         if (
             not heat_system == HeatSystem.URBAN_CENTRAL
         ) and use_electricity_distribution_grid:
@@ -561,37 +568,35 @@ def add_heating_capacities_installed_before_baseyear(
         else:
             nodes_elec = nodes
 
-            too_large_grouping_years = [
-                gy for gy in grouping_years if gy >= int(baseyear)
-            ]
-            if too_large_grouping_years:
-                logger.warning(
-                    f"Grouping years >= baseyear are ignored. Dropping {too_large_grouping_years}."
-                )
-            valid_grouping_years = pd.Series(
-                [
-                    int(grouping_year)
-                    for grouping_year in grouping_years
-                    if int(grouping_year) + default_lifetime > int(baseyear)
-                    and int(grouping_year) < int(baseyear)
-                ]
+        too_large_grouping_years = [gy for gy in grouping_years if gy >= int(baseyear)]
+        if too_large_grouping_years:
+            logger.warning(
+                f"Grouping years >= baseyear are ignored. Dropping {too_large_grouping_years}."
             )
+        valid_grouping_years = pd.Series(
+            [
+                int(grouping_year)
+                for grouping_year in grouping_years
+                if int(grouping_year) + default_lifetime > int(baseyear)
+                and int(grouping_year) < int(baseyear)
+            ]
+        )
 
-            assert valid_grouping_years.is_monotonic_increasing
+        assert valid_grouping_years.is_monotonic_increasing
 
-            if len(valid_grouping_years) == 0:
-                logger.warning(
-                    f"No valid grouping years found for {heat_system}. "
-                    "No existing capacities will be added."
-                )
-                ratios = []
-            else:
-                # get number of years of each interval
-                _years = valid_grouping_years.diff()
-                # Fill NA from .diff() with value for the first interval
-                _years[0] = valid_grouping_years[0] - baseyear + default_lifetime
-                # Installation is assumed to be linear for the past
-                ratios = _years / _years.sum()
+        if len(valid_grouping_years) == 0:
+            logger.warning(
+                f"No valid grouping years found for {heat_system}. "
+                "No existing capacities will be added."
+            )
+            ratios = []
+        else:
+            # get number of years of each interval
+            _years = valid_grouping_years.diff()
+            # Fill NA from .diff() with value for the first interval
+            _years[0] = valid_grouping_years[0] - baseyear + default_lifetime
+            # Installation is assumed to be linear for the past
+            ratios = _years / _years.sum()
 
         for ratio, grouping_year in zip(ratios, valid_grouping_years):
             # Add heat pumps

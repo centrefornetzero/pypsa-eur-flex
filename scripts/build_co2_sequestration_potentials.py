@@ -63,6 +63,24 @@ def convert_to_2d(
         raise RuntimeError(f"Geometry type {type(geom)} is not supported.")
 
 
+def _normalize_feature_id(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    id_columns = [col for col in ("ID2", "id", "ID") if col in gdf.columns]
+    if not id_columns:
+        raise KeyError("Could not find a storage/trap identifier column in the map data.")
+
+    feature_id = gdf[id_columns].bfill(axis=1).iloc[:, 0]
+    return gdf.assign(ID=feature_id)
+
+
+def _combine_geometries(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    grouped = (
+        gdf.groupby(["COUNTRYCOD", "ID"], dropna=False)["geometry"]
+        .agg(unary_union)
+        .reset_index()
+    )
+    return gpd.GeoDataFrame(grouped, geometry="geometry", crs=CRS)
+
+
 def create_capacity_map_storage(table_fn: str, map_fn: str) -> gpd.GeoDataFrame:
     """
     Create a GeoDataFrame of CO2 storage capacities.
@@ -81,14 +99,13 @@ def create_capacity_map_storage(table_fn: str, map_fn: str) -> gpd.GeoDataFrame:
     """
     df = pd.read_csv(table_fn)
 
+    gdf = _normalize_feature_id(gpd.read_file(map_fn))
     sel = ["COUNTRYCOD", "ID", "geometry"]
-    gdf = gpd.read_file(map_fn).rename(columns={"id": "ID"})[sel]
+    gdf = gdf[sel]
     gdf.geometry = gdf.geometry.buffer(0)
 
     # Combine shapes with the same id into one multi-polygon
-    gdf = gdf.groupby(["COUNTRYCOD", "ID"]).agg(unary_union).reset_index()
-    gdf.set_geometry("geometry", inplace=True)
-    gdf.set_crs(CRS, inplace=True)
+    gdf = _combine_geometries(gdf)
 
     # conservative estimate: use MIN
     df["conservative estimate Mt"] = (
@@ -154,13 +171,12 @@ def create_capacity_map_traps(table_fn: list[str], map_fn: str) -> gpd.GeoDataFr
     """
     df = pd.concat([pd.read_csv(path) for path in table_fn], ignore_index=True)
 
+    gdf = _normalize_feature_id(gpd.read_file(map_fn))
     sel = ["COUNTRYCOD", "ID", "geometry"]
-    gdf = gpd.read_file(map_fn).rename(columns={"id": "ID"})[sel]
+    gdf = gdf[sel]
 
     # Combine shapes with the same id into one multi-polygon
-    gdf = gdf.groupby(["COUNTRYCOD", "ID"]).agg(unary_union).reset_index()
-    gdf.set_geometry("geometry", inplace=True)
-    gdf.set_crs(CRS, inplace=True)
+    gdf = _combine_geometries(gdf)
 
     # conservative estimate: use MIN
     df["conservative estimate aquifer Mt"] = (

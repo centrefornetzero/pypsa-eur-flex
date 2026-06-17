@@ -1165,15 +1165,22 @@ def add_co2_atmosphere_constraint(n, snapshots):
 
 #################################################
 ############# From Pypsa-DE, June 4 2024 test for delayed technology occurrence #############
-def first_technology_occurrence(n):
+def first_technology_occurrence(n, investment_year: int | None = None):
     """
     Sets p_nom_extendable to false for carriers with configured first
     occurrence if investment year is before configured year.
     """
     #technology_occurrence=config_provider("first_technology_occurrence") this needs to go into the rule params that use solve_network.py (solve_myopic.smk))
+    if investment_year is None:
+        logger.info(
+            "Skipping first_technology_occurrence because no investment year is "
+            "available for this workflow."
+        )
+        return
+
     for c, carriers in snakemake.params.technology_occurrence.items():
         for carrier, first_year in carriers.items():
-            if int(snakemake.wildcards.planning_horizons) < first_year:
+            if investment_year < first_year:
                 logger.info(f"{carrier} not extendable before {first_year}.")
                 n.df(c).loc[n.df(c).carrier == carrier, "p_nom_extendable"] = False
 
@@ -1184,6 +1191,30 @@ def first_technology_occurrence(n):
 
 
 def add_capacity_limits(n, investment_year, limits_capacity, sense):
+    carrier_aliases = {
+        "SMR_cc": "SMR CC",
+        "SRM_cc": "SMR CC",
+    }
+
+    def get_valid_components_mask(c, carrier, ct=None):
+        resolved_carrier = carrier_aliases.get(carrier, carrier).replace("_", " ")
+        carrier_series = (
+            c.df.carrier.fillna("").str.lower().str.replace("_", " ", regex=False)
+        )
+        valid_components = carrier_series.str.startswith(resolved_carrier.lower())
+
+        if ct is not None:
+            valid_components &= c.df.index.str[:2] == ct
+
+        valid_components &= ~carrier_series.str.contains("thermal")
+
+        if resolved_carrier != carrier:
+            logger.warning(
+                f"Normalizing configured carrier '{carrier}' to '{resolved_carrier}' for capacity limit matching."
+            )
+
+        return valid_components, resolved_carrier
+
     # my addition:
     if not n.config["limit_capacity_by_country"]:
         logger.info("Adding capacity limits for all countries")
@@ -1204,11 +1235,16 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense):
                 logger.info(
                         f"Adding constraint on {c.name} {carrier} capacity in all countries to be {sense} {limit} {units}"
                     )
-                
-                valid_components = (
-                        (c.df.carrier.str[: len(carrier)] == carrier)
-                        & ~c.df.carrier.str.contains("thermal")
-                    )  # exclude solar thermal
+
+                valid_components, resolved_carrier = get_valid_components_mask(
+                    c, carrier
+                )
+
+                if not valid_components.any():
+                    logger.warning(
+                        f"Skipping {sense} capacity constraint for {c.name} {carrier}: no matching components found in the network."
+                    )
+                    continue
                 
                 existing_index = c.df.index[
                         valid_components & ~c.df[attr + "_nom_extendable"]
@@ -1221,6 +1257,26 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense):
                 logger.info(
                         f"Existing {c.name} {carrier} capacity: {existing_capacity} {units}"
                     )
+
+                if len(extendable_index) == 0:
+                    if sense == "minimum" and existing_capacity < limit:
+                        raise ValueError(
+                            f"Minimum capacity constraint for {c.name} {resolved_carrier} in Europe cannot be enforced: "
+                            f"existing capacity is {existing_capacity} {units}, required minimum is {limit} {units}, "
+                            "and there are no extendable matching components."
+                        )
+
+                    if sense == "maximum" and existing_capacity > limit:
+                        logger.warning(
+                            f"Existing capacity in Europe for carrier {resolved_carrier} already exceeds the limit of {limit} {units}, "
+                            "and there are no extendable matching components. Skipping the model constraint."
+                        )
+                    else:
+                        logger.info(
+                            f"Skipping {sense} capacity constraint for {c.name} {resolved_carrier}: no extendable matching components."
+                        )
+                    continue
+
                 nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
 
                 lhs = nom.sum()
@@ -1288,11 +1344,15 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense):
                         f"Adding constraint on {c.name} {carrier} capacity in {ct} to be {sense} {limit} {units}"
                     )
 
-                    valid_components = (
-                        (c.df.index.str[:2] == ct)
-                        & (c.df.carrier.str[: len(carrier)] == carrier)
-                        & ~c.df.carrier.str.contains("thermal")
-                    )  # exclude solar thermal
+                    valid_components, resolved_carrier = get_valid_components_mask(
+                        c, carrier, ct=ct
+                    )
+
+                    if not valid_components.any():
+                        logger.warning(
+                            f"Skipping {sense} capacity constraint for {c.name} {carrier} in {ct}: no matching components found in the network."
+                        )
+                        continue
 
                     existing_index = c.df.index[
                         valid_components & ~c.df[attr + "_nom_extendable"]
@@ -1306,6 +1366,25 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense):
                     logger.info(
                         f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} {units}"
                     )
+
+                    if len(extendable_index) == 0:
+                        if sense == "minimum" and existing_capacity < limit:
+                            raise ValueError(
+                                f"Minimum capacity constraint for {c.name} {resolved_carrier} in {ct} cannot be enforced: "
+                                f"existing capacity is {existing_capacity} {units}, required minimum is {limit} {units}, "
+                                "and there are no extendable matching components."
+                            )
+
+                        if sense == "maximum" and existing_capacity > limit:
+                            logger.warning(
+                                f"Existing capacity in {ct} for carrier {resolved_carrier} already exceeds the limit of {limit} {units}, "
+                                "and there are no extendable matching components. Skipping the model constraint."
+                            )
+                        else:
+                            logger.info(
+                                f"Skipping {sense} capacity constraint for {c.name} {resolved_carrier} in {ct}: no extendable matching components."
+                            )
+                        continue
 
                     nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
 
@@ -1453,25 +1532,37 @@ def extra_functionality(
         add_import_limit_constraint(n, snapshots)
 
      # June 4 2024 test for delayed technology occurrence #
+    investment_year = int(str(planning_horizons)[-4:]) if planning_horizons is not None else None
+
     if config.get('first_technology_occurrence'):
-        first_technology_occurrence(n)
+        first_technology_occurrence(n, investment_year)
 
-    investment_year = int(snakemake.wildcards.planning_horizons[-4:])
-    logger.info(f'The investment year is {investment_year}')
-    #try to see if planning horizon year will work instead of investment year_ 
-    if config.get('limits_capacity_min'):
-        add_capacity_limits(
-            n, investment_year, config["limits_capacity_min"], "minimum"
+    if investment_year is not None:
+        logger.info(f"The investment year is {investment_year}")
+        # try to see if planning horizon year will work instead of investment year_
+        if config.get("limits_capacity_min"):
+            add_capacity_limits(
+                n, investment_year, config["limits_capacity_min"], "minimum"
+            )
+
+        if config.get("limits_capacity_max"):
+            add_capacity_limits(
+                n, investment_year, config["limits_capacity_max"], "maximum"
+            )
+
+        if config.get("forced_gas_constraint"):
+            forced_gas_operation(n, planning_horizons)
+    elif any(
+        config.get(option)
+        for option in (
+            "limits_capacity_min",
+            "limits_capacity_max",
+            "forced_gas_constraint",
         )
-
-    if config.get('limits_capacity_max'):
-        add_capacity_limits(
-            n, investment_year, config["limits_capacity_max"], "maximum"
-        )
-
-    if config.get('forced_gas_constraint'):
-        forced_gas_operation(
-            n, planning_horizons
+    ):
+        logger.info(
+            "Skipping planning-horizon-dependent custom constraints because this "
+            "workflow has no planning_horizons wildcard."
         )
 
     if n.params.custom_extra_functionality:
@@ -1620,11 +1711,14 @@ def solve_network(
         raise RuntimeError("Solving status 'warning'. Discarding solution.")
 
     if "infeasible" in condition:
-        labels = n.model.compute_infeasibilities()
-        logger.info(f"Labels:\n{labels}")
-        n.model.print_infeasibilities()
-        raise RuntimeError("Solving status 'infeasible'. Infeasibilities computed.")
-
+        # try to compute infeasibilities if solver supports it, otherwise raise error without infeasibility information
+        try:
+            labels = n.model.compute_infeasibilities()
+            logger.info(f"Labels:\n{labels}")
+            n.model.print_infeasibilities()
+            raise RuntimeError("Solving status 'infeasible'. Infeasibilities computed.")
+        except NotImplementedError:
+            raise RuntimeError("Solving status 'infeasible'. Solver does not support infeasibility computation.")       
 
 if __name__ == "__main__":
     if "snakemake" not in globals():

@@ -53,6 +53,7 @@ def retrieve_osm_boundaries(
         osm_adm_level = adm1_specials[country]  # special case e.g. for Kosovo
 
     retries = 3
+    header = "pypsa-eur-flex - CNZ"
     for attempt in range(retries):
         logger.info(
             f" - Fetching OSM administrative boundaries for {country} (Attempt {attempt + 1})..."
@@ -70,7 +71,7 @@ def retrieve_osm_boundaries(
         """
         try:
             # Send the request
-            response = requests.post(overpass_url, data=op_query)
+            response = requests.post(overpass_url, data=op_query, headers={"User-Agent": header})
             response.raise_for_status()  # Raise HTTPError for bad responses
 
             filepath = output[0]

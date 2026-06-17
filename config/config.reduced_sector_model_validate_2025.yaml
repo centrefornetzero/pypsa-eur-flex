@@ -1,0 +1,292 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# Trimmed sector-coupled override config
+#
+# It relies on config.default.yaml for unchanged defaults. 
+# Active sectors are power, heat, hydrogen (for for electricity), co2 (as an output) and transport. 
+
+private:
+  keys:
+    entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
+foresight: overnight # Make Myopic when running multi-sector, overnight when running elec network only. 
+
+scenario:
+  clusters:
+  - 39
+  planning_horizons:
+  - 2025
+  #- 2030
+  #- 2035
+  #- 2040
+  #- 2045
+  #- 2050
+
+snapshots:
+  start: "2019-01-01"
+  end: "2020-01-01"
+
+# For historical years, make sure nothing is extendable. 
+electricity:
+  extendable_carriers:
+    Generator: []
+    StorageUnit: []
+    Store: []
+    Link: []
+    powerplants_filter: (DateOut >= 2024 or DateOut != DateOut)
+  transmission_limit: v1.0
+
+  estimate_renewable_capacities:
+    enable: true
+    year: 2025
+
+# electricity:
+#   extendable_carriers:
+#     StorageUnit: [battery]
+#     Link: [H2 pipeline]
+#   powerplants_filter: (DateOut >= 2024 or DateOut != DateOut)
+#   estimate_renewable_capacities:
+#     year: 2025
+
+atlite:
+  default_cutout: europe-2019-sarah3-era5
+  cutouts:
+    europe-2019-sarah3-era5:
+      module: [sarah, era5]
+      x: [-12.0, 42.0]
+      y: [33.0, 72.0]
+      dx: 0.3
+      dy: 0.3
+      time: ["2019", "2020"]
+
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5
+  offwind-ac:
+    cutout: europe-2019-sarah3-era5
+  offwind-dc:
+    cutout: europe-2019-sarah3-era5
+  offwind-float:
+    cutout: europe-2019-sarah3-era5
+  solar:
+    cutout: europe-2019-sarah3-era5
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5
+  hydro:
+    cutout: europe-2019-sarah3-era5
+
+conventional:
+  dynamic_fuel_price: true
+
+pypsa_eur:
+  Bus:
+  - AC
+  - gas
+  - lignite
+  - coal
+  - oil
+  Link:
+  - DC
+  - OCGT
+  - CCGT
+  - lignite
+  - biomass
+  - coal
+  Generator:
+  - onwind
+  - offwind-ac
+  - offwind-dc
+  - offwind-float
+  - solar-hsat
+  - solar
+  - ror
+  - nuclear
+  - geothermal
+
+energy:
+  energy_totals_year: 2021 # can only go up to 2021, otherwise various sector demand have no data
+
+biomass:
+  year: 2025
+
+existing_capacities:
+  grouping_years_heat: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019] # heat grouping years >= baseyear will be ignored
+  conventional_carriers: [lignite, coal, oil, uranium, gas]
+
+limit_capacity_by_country: false
+
+limits_capacity_max:
+  Link:
+    H2 Electrolysis:
+      2020: 0.000018
+      2025: 0.000012
+      2030: 0.000006
+      2040: 443.500963
+      2050: 443.492962
+    SMR:
+      2020: 16.696187
+      2025: 16.809927
+      2030: 16.923667
+      2040: 16.909743
+      2050: 0.243199
+    SMR CC:
+      2020: 0.000169
+      2025: 0.000107
+      2030: 0.000045
+      2040: 0.000358
+      2050: 0.000008
+    ammonia cracker:
+      2020: 0.000033
+      2025: 0.0000215
+      2030: 0.000010
+      2040: 0.000312
+      2050: 0.000012
+    solid biomass to hydrogen:
+      2020: 0.000015
+      2025: 0.000010
+      2030: 0.000005
+      2040: 0.000140
+      2050: 0.000003
+
+sector:
+  biomass: false
+  industry: false
+  aviation: false
+  agriculture: false
+  shipping: false
+
+  bev_dsm: false
+  bev_dsm_availability: 0.3
+  bev_dsm_restriction_value: 0.8
+  bev_dsm_restriction_time: 7
+  v2g: false
+  v2g_availability:
+    2020: 0
+    2025: 0.08
+    2030: 0.15
+    2040: 0.35
+    2050: 0.8
+
+  land_transport_fuel_cell_share:
+    2020: 0
+    2025: 0
+    2030: 0
+    2035: 0
+    2040: 0
+    2045: 0
+    2050: 0
+  land_transport_electric_share:
+    2020: 0
+    2025: 0.15
+    2030: 0.3
+    2035: 0.45
+    2040: 0.7
+    2045: 0.85
+    2050: 1
+  land_transport_ice_share:
+    2020: 1
+    2025: 0.85
+    2030: 0.7
+    2035: 0.55
+    2040: 0.3
+    2045: 0.15
+    2050: 0
+
+  tes: false
+  boilers: false
+  biomass_boiler: false
+  chp:
+    enable: false
+  solar_thermal: false
+
+  methanation: false
+  SMR: false
+  SMR_cc: false
+  ammonia: false
+  co2_network: false
+  H2_network: false
+  gas_network: false
+  gas_distribution_grid: false
+  biomass_spatial: false
+  biomass_transport: false
+  biogas_upgrading: false
+  biogas_upgrading_cc: false
+  biomass_to_liquid: false
+  biomass_to_liquid_cc: false
+  electrobiofuels: false
+  biosng: false
+  biosng_cc: false
+  bioH2: false
+  municipal_solid_waste: false
+
+  regional_co2_sequestration_potential:
+    attribute:
+    - conservative estimate Mt
+    - conservative estimate GAS Mt
+    - conservative estimate OIL Mt
+  co2_sequestration_potential:
+    2030: 50
+    2035: 115
+    2040: 280
+    2045: 365
+    2050: 450
+
+  methanol:
+    methanol_to_power:
+      ocgt: false
+    biomass_to_methanol: false
+
+  conventional_generation:
+    coal: coal
+    lignite: lignite
+
+plotting:
+  balance_timeseries:
+    carriers: [H2, co2 stored]
+  heatmap_timeseries:
+    marginal_price: [AC, H2, co2 stored, urban central heat]
+    utilisation_rate:
+    - solar
+    - solar rooftop
+    - solar-hsat
+    - onwind
+    - offwind-dc
+    - offwind-ac
+    - offwind-float
+    - ror
+    - hydro
+    - PHS
+    - battery charger
+    - battery discharger
+    - H2 Electrolysis
+    - H2 Fuel Cell
+    - H2 turbine
+    - urban central air heat pump
+    - urban decentral air heat pump
+    - rural air heat pump
+    - rural ground heat pump
+    - DAC
+    soc: [battery, H2 Store, co2 stored]
+  balance_map:
+    bus_carriers: [AC, H2, co2 stored]
+
+costs:
+  year: 2025
+  emission_prices:
+    enable: true
+    co2: 25.0 #EUR/tCO2
+    co2_monthly_prices: false
+
+clustering:
+  temporal:
+    resolution_sector: 2H
+
+solving:
+  solver_options:
+    highs-default:
+      threads: 8
+    gurobi-default:
+      threads: 8

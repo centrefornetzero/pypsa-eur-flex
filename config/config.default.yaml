@@ -579,6 +579,7 @@ sector:
   bev_avail_max: 0.95
   bev_avail_mean: 0.8
   v2g: true
+  v2g_availability: 0.5
   land_transport_fuel_cell_share:
     2020: 0
     2025: 0

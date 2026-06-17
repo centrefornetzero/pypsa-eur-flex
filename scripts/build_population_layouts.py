@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     # nuts3 has columns country, gdp, pop, geometry
     # population is given in dimensions of 1e3=k
-    nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index("index")
+    nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).reset_index(drop=True)
 
     # Indicator matrix NUTS3 -> grid cells
     I = atlite.cutout.compute_indicatormatrix(nuts3.geometry, grid_cells)  # noqa: E741

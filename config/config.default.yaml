@@ -103,7 +103,7 @@ co2_budget:
   2035: 0.250
   2040: 0.100 # 90% by 2040
   2045: 0.050
-  2050: 0.000 # climate-neutral by 2050
+  2050: 0.050 # 95% by 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#electricity
 electricity:

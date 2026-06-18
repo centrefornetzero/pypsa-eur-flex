@@ -5,7 +5,7 @@
 # Trimmed sector-coupled override config
 #
 # It relies on config.default.yaml for unchanged defaults. 
-# Active sectors are power, heat, hydrogen (for for electricity), co2 (as an output) and transport. 
+# Active sectors are power, heat, hydrogen (for electricity), co2 (as an output) and transport. 
 
 private:
   keys:
@@ -18,17 +18,17 @@ scenario:
   clusters:
   - 39
   planning_horizons:
-  - 2025
-  - 2030
+  #- 2025
+  #- 2030
   #- 2035
   #- 2040
   #- 2045
-  #- 2050
+  - 2050
   current_year: 2026
 
 snapshots:
   start: "2019-01-01"
-  end: "2019-02-01"
+  end: "2020-01-01"
 
 # # For historical years, make sure nothing is extendable. 
 # electricity:
@@ -204,6 +204,11 @@ sector:
   solar_thermal: false
 
   methanation: false
+  # Hydrogen off 
+  #hydrogen_fuel_cell: false
+  #hydrogen_turbine: false
+  # DAC off
+  #dac: false
   SMR: false
   SMR_cc: false
   ammonia: false

@@ -34,6 +34,15 @@ OUTPUTS = [
 ]
 
 
+def get_available_marginal_prices(
+    n: pypsa.Network, buses: pd.Index | None = None
+) -> pd.DataFrame:
+    prices = n.buses_t.marginal_price
+    if buses is None:
+        return prices
+    return prices.loc[:, buses.intersection(prices.columns)]
+
+
 def assign_carriers(n: pypsa.Network) -> None:
     if "carrier" not in n.lines:
         n.lines["carrier"] = "AC"
@@ -226,13 +235,21 @@ def calculate_metrics(n: pypsa.Network) -> pd.Series:
     metrics["total costs"] = n.statistics.capex().sum() + n.statistics.opex().sum()
 
     buses_i = n.buses.query("carrier == 'AC'").index
-    prices = n.buses_t.marginal_price[buses_i]
+    prices = get_available_marginal_prices(n, buses_i)
 
-    # threshold higher than marginal_cost of VRE
-    zero_hours = prices.where(prices < 0.1).count().sum()
-    metrics["electricity_price_zero_hours"] = zero_hours / prices.size
-    metrics["electricity_price_mean"] = prices.unstack().mean()
-    metrics["electricity_price_std"] = prices.unstack().std()
+    if prices.empty:
+        logger.warning(
+            "No AC bus marginal prices available. Electricity price metrics are set to NA."
+        )
+        metrics["electricity_price_zero_hours"] = pd.NA
+        metrics["electricity_price_mean"] = pd.NA
+        metrics["electricity_price_std"] = pd.NA
+    else:
+        # threshold higher than marginal_cost of VRE
+        zero_hours = prices.where(prices < 0.1).count().sum()
+        metrics["electricity_price_zero_hours"] = zero_hours / prices.size
+        metrics["electricity_price_mean"] = prices.unstack().mean()
+        metrics["electricity_price_std"] = prices.unstack().std()
 
     if "lv_limit" in n.global_constraints.index:
         metrics["line_volume_limit"] = n.global_constraints.at["lv_limit", "constant"]
@@ -253,7 +270,11 @@ def calculate_prices(n: pypsa.Network) -> pd.Series:
     """
     Calculate time-averaged prices per carrier.
     """
-    return n.buses_t.marginal_price.mean().groupby(n.buses.carrier).mean().sort_index()
+    prices = get_available_marginal_prices(n)
+    if prices.empty:
+        logger.warning("No bus marginal prices available. Returning empty prices summary.")
+        return pd.Series(dtype=float)
+    return prices.mean().groupby(n.buses.carrier).mean().sort_index()
 
 
 def calculate_weighted_prices(n: pypsa.Network) -> pd.Series:
@@ -263,6 +284,13 @@ def calculate_weighted_prices(n: pypsa.Network) -> pd.Series:
     carriers = n.buses.carrier.unique()
 
     weighted_prices = {}
+    all_prices = get_available_marginal_prices(n)
+
+    if all_prices.empty:
+        logger.warning(
+            "No bus marginal prices available. Returning empty weighted prices summary."
+        )
+        return pd.Series(dtype=float)
 
     for carrier in carriers:
         load = n.statistics.withdrawal(
@@ -273,7 +301,10 @@ def calculate_weighted_prices(n: pypsa.Network) -> pd.Series:
         ).T
 
         if not load.empty and load.sum().sum() > 0:
-            price = n.buses_t.marginal_price.loc[:, n.buses.carrier == carrier]
+            price_buses = n.buses.index[n.buses.carrier == carrier]
+            price = all_prices.loc[:, price_buses.intersection(all_prices.columns)]
+            if price.empty:
+                continue
             price = price.reindex(columns=load.columns, fill_value=1)
 
             weights = n.snapshot_weightings.generators
@@ -288,6 +319,9 @@ def calculate_market_values(n: pypsa.Network) -> pd.Series:
     """
     Calculate market values for electricity.
     """
+    if get_available_marginal_prices(n).empty:
+        logger.warning("No bus marginal prices available. Returning empty market values summary.")
+        return pd.Series(dtype=float)
     return (
         n.statistics.market_value(bus_carrier="AC", aggregate_across_components=True)
         .sort_values()

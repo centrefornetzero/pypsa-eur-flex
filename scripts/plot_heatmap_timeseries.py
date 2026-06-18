@@ -19,6 +19,38 @@ from scripts._helpers import configure_logging, get_snapshots, set_scenario_conf
 logger = logging.getLogger(__name__)
 
 
+def group_statistics_by_carrier(
+    data: pd.Series | pd.DataFrame, n: pypsa.Network
+) -> pd.Series | pd.DataFrame:
+    if data.empty:
+        return data
+
+    index_names = list(getattr(data.index, "names", []))
+    if "carrier" in index_names:
+        return data.groupby("carrier").sum()
+
+    if not {"component", "name"}.issubset(index_names):
+        raise KeyError("carrier")
+
+    components = data.index.get_level_values("component")
+    names = data.index.get_level_values("name")
+    carrier_labels = []
+
+    for component, name in zip(components, names, strict=False):
+        df = n.df(component)
+        if "carrier" in df.columns and name in df.index:
+            carrier_labels.append(df.at[name, "carrier"])
+        else:
+            carrier_labels.append(pd.NA)
+
+    carrier_labels = pd.Index(carrier_labels, name="carrier")
+    valid = carrier_labels.notna()
+
+    if isinstance(data, pd.Series):
+        return data.loc[valid].groupby(carrier_labels[valid]).sum()
+    return data.loc[valid].groupby(carrier_labels[valid]).sum()
+
+
 def unstack_day_hour(
     s: pd.Series, sns: pd.DatetimeIndex, drop_leap_day: bool = True
 ) -> pd.DataFrame:
@@ -122,19 +154,17 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # filter for build capacities
-    optimal_capacity = (
-        n.statistics.optimal_capacity(nice_names=False).groupby("carrier").sum()
+    optimal_capacity = group_statistics_by_carrier(
+        n.statistics.optimal_capacity(nice_names=False), n
     )
     built_idx = optimal_capacity.where(optimal_capacity > 100).dropna().index
 
     # utilisation rates
-    cf = (
-        n.statistics.capacity_factor(aggregate_time=False, nice_names=False)
-        .dropna()
-        .groupby("carrier")
-        .sum()
-        .mul(100)
-    )
+    cf_raw = n.statistics.capacity_factor(aggregate_time=False, nice_names=False).dropna()
+    if cf_raw.empty:
+        cf = pd.DataFrame()
+    else:
+        cf = group_statistics_by_carrier(cf_raw, n).mul(100)
     idx = cf.index.intersection(config["utilisation_rate"]).intersection(built_idx)
     cf = cf.loc[idx]
 

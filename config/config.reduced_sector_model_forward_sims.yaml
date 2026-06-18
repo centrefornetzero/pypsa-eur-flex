@@ -5,52 +5,52 @@
 # Trimmed sector-coupled override config
 #
 # It relies on config.default.yaml for unchanged defaults. 
-# Active sectors are power, heat, hydrogen (for for electricity), co2 (as an output) and transport. 
+# Active sectors are power, heat, hydrogen (for electricity), co2 (as an output) and transport. 
 
 private:
   keys:
     entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
-foresight: overnight # Make Myopic when running multi-sector, overnight when running elec network only. 
+foresight: myopic # Make Myopic when running multi-sector, overnight when running elec network only. 
 
 scenario:
   clusters:
   - 39
   planning_horizons:
-  - 2025
+  #- 2025
   #- 2030
   #- 2035
   #- 2040
   #- 2045
-  #- 2050
+  - 2050
   current_year: 2026
 
 snapshots:
   start: "2019-01-01"
   end: "2020-01-01"
 
-# For historical years, make sure nothing is extendable. 
-electricity:
-  extendable_carriers:
-    Generator: []
-    StorageUnit: []
-    Store: []
-    Link: []
-    powerplants_filter: (DateOut >= 2024 or DateOut != DateOut)
-  transmission_limit: v1.0
-
-  estimate_renewable_capacities:
-    enable: true
-    year: 2025
-
+# # For historical years, make sure nothing is extendable. 
 # electricity:
 #   extendable_carriers:
-#     StorageUnit: [battery]
-#     Link: [H2 pipeline]
-#   powerplants_filter: (DateOut >= 2024 or DateOut != DateOut)
+#     Generator: []
+#     StorageUnit: []
+#     Store: []
+#     Link: []
+#     powerplants_filter: (DateOut >= 2024 or DateOut != DateOut)
+#   transmission_limit: v1.0
+
 #   estimate_renewable_capacities:
+#     enable: true
 #     year: 2025
+
+electricity:
+  extendable_carriers:
+    StorageUnit: [battery]
+    Link: [H2 pipeline]
+  powerplants_filter: (DateOut >= 2024 or DateOut != DateOut)
+  estimate_renewable_capacities:
+    year: 2025
 
 atlite:
   default_cutout: europe-2019-sarah3-era5
@@ -197,13 +197,18 @@ sector:
     2050: 0
 
   tes: false
-  boilers: true
+  boilers: true # Needs to be true otherwise we're assuming all heat demand met by electricity
   biomass_boiler: false
   chp:
     enable: false
   solar_thermal: false
 
   methanation: false
+  # Hydrogen off 
+  #hydrogen_fuel_cell: false
+  #hydrogen_turbine: false
+  # DAC off
+  #dac: false
   SMR: false
   SMR_cc: false
   ammonia: false
@@ -274,12 +279,12 @@ plotting:
   balance_map:
     bus_carriers: [AC, H2, co2 stored]
 
-costs:
-  year: 2025
-  emission_prices:
-    enable: true
-    co2: 25.0 #EUR/tCO2
-    co2_monthly_prices: false
+# costs:
+#   year: 2025
+#   emission_prices:
+#     enable: true
+#     co2: 25.0 #EUR/tCO2
+#     co2_monthly_prices: false
 
 clustering:
   temporal:

@@ -45,14 +45,14 @@ def add_build_year_to_new_assets(n: pypsa.Network, baseyear: int) -> None:
     baseyear : int
         Year in which optimized assets are built
     """
-    # Give assets with lifetimes and no build year the build year baseyear
     for c in n.iterate_components(["Link", "Generator", "Store"]):
-        assets = c.df.index[(c.df.lifetime != np.inf) & (c.df.build_year == 0)]
-        c.df.loc[assets, "build_year"] = baseyear
+        assets_to_tag = c.df.index[(c.df.lifetime != np.inf) & (c.df.build_year == 0)]
+        c.df.loc[assets_to_tag, "build_year"] = baseyear
 
-        # add -baseyear to name
+        # Only append year suffix for newly-tagged assets; keep existing names stable.
         rename = pd.Series(c.df.index, c.df.index)
-        rename[assets] += f"-{str(baseyear)}"
+        rename.loc[assets_to_tag] += f"-{str(baseyear)}"
+
         c.df.rename(index=rename, inplace=True)
 
         # rename time-dependent

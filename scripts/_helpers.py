@@ -121,7 +121,7 @@ def get_run_path(fn, dir, rdir, shared_resources, exclude_from_shared):
     if shared_resources == "base":
         pattern = r"\{([^{}]+)\}"
         existing_wildcards = set(re.findall(pattern, fn))
-        irrelevant_wildcards = {"technology", "year", "scope", "kind"}
+        irrelevant_wildcards = {"technology", "year", "scope", "kind", "planning_horizons"}
         no_relevant_wildcards = not existing_wildcards - irrelevant_wildcards
         not_shared_rule = (
             not fn.endswith("elec.nc")

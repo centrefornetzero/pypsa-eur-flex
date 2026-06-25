@@ -105,6 +105,19 @@ snapshots:
   start: "2019-01-01"
   end: "2020-01-01"
 
+clustering:
+  temporal:
+    resolution_sector: 2H
+  
+solving:
+  solver_options:
+    highs-default:
+      threads: 8
+    gurobi-default:
+      threads: 8
+
+
+
 # # For historical years, make sure nothing is extendable. 
 # electricity:
 #   extendable_carriers:

@@ -2,14 +2,89 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-# Trimmed sector-coupled override config
+# Trimmed sector-coupled override config with orchestrator-driven experiments
 #
 # It relies on config.default.yaml for unchanged defaults. 
-# Active sectors are power, heat, hydrogen (for electricity), co2 (as an output) and transport. 
+# Active sectors are power, heat, hydrogen (for electricity), co2 (as an output) and transport.
+# Experiments are auto-generated from experiment_orchestrator config.
 
 private:
   keys:
     entsoe_api: 53f9250b-91d3-4d15-af4f-c0b8b1f155e2
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
+run:
+  prefix: "multi_experiment_results"
+  name: all
+  scenarios:
+    enable: true
+    file: config/scenarios.experiments.yaml
+  disable_progressbar: false
+  shared_resources:
+    # with this setting we avoid running all of the preprocessing for each individual scenario
+    # We are changing bev_dsm, v2g, hydrogen, dac, which all operate at the model-construction layer, 
+    # not the data-preparation layer -> so data prep can be shared. 
+    policy: "base" 
+    exclude: []
+  shared_cutouts: true
+  use_shadow_directory: false
+
+# Experiment orchestration for automatic scenario generation via config/create_scenarios.py.
+# Scenario names are combined as "{policy_scenario}__{flex_option}" and become run suffixes in results/.
+experiment_orchestrator:
+  name_separator: "__"
+  planning_horizons:
+  - 2025
+  - 2030
+  - 2040
+  - 2050
+  flex_options:
+    flex00_no_bev_flex:
+      sector:
+        bev_dsm: false
+        bev_dsm_availability: 0.0
+        v2g: false
+        v2g_availability: 0.0
+    flex30_bev_dsm:
+      sector:
+        bev_dsm: true
+        bev_dsm_availability: 0.3
+        v2g: false
+        v2g_availability: 0.0
+    flex100_bev_dsm:
+      sector:
+        bev_dsm: true
+        bev_dsm_availability: 1.0
+        v2g: false
+        v2g_availability: 0.0
+    flex100_bev_dsm_v2g:
+      sector:
+        bev_dsm: true
+        bev_dsm_availability: 1.0
+        v2g: true
+        v2g_availability: 1.0
+  policy_scenarios:
+    baseline: {}
+    tx_v1p5:
+      electricity:
+        transmission_limit: v1.5
+    no_h2:
+      sector:
+        hydrogen_fuel_cell: false
+        hydrogen_turbine: false
+    no_ccus:
+      sector:
+        dac: false
+    no_h2_no_ccus:
+      sector:
+        hydrogen_fuel_cell: false
+        hydrogen_turbine: false
+        dac: false
+
+##################### NOTE #############################################
+# Everything below here is a default value. If duplicate params exist here
+# and in the `experiment_orchestrator` block above, then the values in 
+# `experiment_orchestrator` will override the defaults below.
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
 foresight: myopic # Make Myopic when running multi-sector, overnight when running elec network only. 
@@ -17,18 +92,31 @@ foresight: myopic # Make Myopic when running multi-sector, overnight when runnin
 scenario:
   clusters:
   - 39
+  sector_opts:
+  - ''
   planning_horizons:
-  #- 2025
-  #- 2030
-  #- 2035
-  #- 2040
-  #- 2045
-  - 2050
+    - 2025
+    - 2030
+    - 2040
+    - 2050
   current_year: 2026
 
 snapshots:
   start: "2019-01-01"
   end: "2020-01-01"
+
+clustering:
+  temporal:
+    resolution_sector: 2H
+  
+solving:
+  solver_options:
+    highs-default:
+      threads: 8
+    gurobi-default:
+      threads: 8
+
+
 
 # # For historical years, make sure nothing is extendable. 
 # electricity:
@@ -43,6 +131,7 @@ snapshots:
 #   estimate_renewable_capacities:
 #     enable: true
 #     year: 2025
+
 
 electricity:
   extendable_carriers:
@@ -212,10 +301,10 @@ sector:
 
   methanation: false
   # Hydrogen off 
-  hydrogen_fuel_cell: false
-  hydrogen_turbine: false
+  #hydrogen_fuel_cell: false
+  #hydrogen_turbine: false
   # DAC off
-  dac: false
+  #dac: false
   SMR: false
   SMR_cc: false
   ammonia: false
@@ -285,21 +374,3 @@ plotting:
     soc: [battery, H2 Store, co2 stored]
   balance_map:
     bus_carriers: [AC, H2, co2 stored]
-
-# costs:
-#   year: 2025
-#   emission_prices:
-#     enable: true
-#     co2: 25.0 #EUR/tCO2
-#     co2_monthly_prices: false
-
-clustering:
-  temporal:
-    resolution_sector: 2H
-
-solving:
-  solver_options:
-    highs-default:
-      threads: 8
-    gurobi-default:
-      threads: 8

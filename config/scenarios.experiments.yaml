@@ -1,0 +1,272 @@
+baseline__flex00_no_bev_flex:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    bev_dsm: false
+    bev_dsm_availability: 0.0
+    v2g: false
+    v2g_availability: 0.0
+baseline__flex30_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    bev_dsm: true
+    bev_dsm_availability: 0.3
+    v2g: false
+    v2g_availability: 0.0
+baseline__flex100_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: false
+    v2g_availability: 0.0
+baseline__flex100_bev_dsm_v2g:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: true
+    v2g_availability: 1.0
+tx_v1p5__flex00_no_bev_flex:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  electricity:
+    transmission_limit: v1.5
+  sector:
+    bev_dsm: false
+    bev_dsm_availability: 0.0
+    v2g: false
+    v2g_availability: 0.0
+tx_v1p5__flex30_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  electricity:
+    transmission_limit: v1.5
+  sector:
+    bev_dsm: true
+    bev_dsm_availability: 0.3
+    v2g: false
+    v2g_availability: 0.0
+tx_v1p5__flex100_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  electricity:
+    transmission_limit: v1.5
+  sector:
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: false
+    v2g_availability: 0.0
+tx_v1p5__flex100_bev_dsm_v2g:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  electricity:
+    transmission_limit: v1.5
+  sector:
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: true
+    v2g_availability: 1.0
+no_h2__flex00_no_bev_flex:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    bev_dsm: false
+    bev_dsm_availability: 0.0
+    v2g: false
+    v2g_availability: 0.0
+no_h2__flex30_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    bev_dsm: true
+    bev_dsm_availability: 0.3
+    v2g: false
+    v2g_availability: 0.0
+no_h2__flex100_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: false
+    v2g_availability: 0.0
+no_h2__flex100_bev_dsm_v2g:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: true
+    v2g_availability: 1.0
+no_ccus__flex00_no_bev_flex:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    dac: false
+    bev_dsm: false
+    bev_dsm_availability: 0.0
+    v2g: false
+    v2g_availability: 0.0
+no_ccus__flex30_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    dac: false
+    bev_dsm: true
+    bev_dsm_availability: 0.3
+    v2g: false
+    v2g_availability: 0.0
+no_ccus__flex100_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    dac: false
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: false
+    v2g_availability: 0.0
+no_ccus__flex100_bev_dsm_v2g:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    dac: false
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: true
+    v2g_availability: 1.0
+no_h2_no_ccus__flex00_no_bev_flex:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    dac: false
+    bev_dsm: false
+    bev_dsm_availability: 0.0
+    v2g: false
+    v2g_availability: 0.0
+no_h2_no_ccus__flex30_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    dac: false
+    bev_dsm: true
+    bev_dsm_availability: 0.3
+    v2g: false
+    v2g_availability: 0.0
+no_h2_no_ccus__flex100_bev_dsm:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    dac: false
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: false
+    v2g_availability: 0.0
+no_h2_no_ccus__flex100_bev_dsm_v2g:
+  scenario:
+    planning_horizons:
+    - 2025
+    - 2030
+    - 2040
+    - 2050
+  sector:
+    hydrogen_fuel_cell: false
+    hydrogen_turbine: false
+    dac: false
+    bev_dsm: true
+    bev_dsm_availability: 1.0
+    v2g: true
+    v2g_availability: 1.0

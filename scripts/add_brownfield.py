@@ -26,6 +26,45 @@ logger = logging.getLogger(__name__)
 idx = pd.IndexSlice
 
 
+def _replace_trailing_year(index: pd.Index, year: int) -> pd.Index:
+    return index.str.replace(r"-\d{4}$", f"-{year}", regex=True)
+
+
+def _set_series_by_index_with_year_fallback(
+    target_df: pd.DataFrame,
+    target_idx: pd.Index,
+    col: str,
+    source_series: pd.Series,
+    year: int,
+    warn_label: str,
+) -> None:
+    matched = target_idx.intersection(source_series.index)
+    if not matched.empty:
+        target_df.loc[matched, col] = source_series.loc[matched]
+
+    missing = target_idx.difference(matched)
+    if missing.empty:
+        return
+
+    source_by_current_year = source_series.copy()
+    source_by_current_year.index = _replace_trailing_year(
+        source_by_current_year.index, year
+    )
+    source_by_current_year = source_by_current_year[~source_by_current_year.index.duplicated(keep="first")]
+
+    still_missing = missing.difference(source_by_current_year.index)
+    fallback_idx = missing.intersection(source_by_current_year.index)
+    if not fallback_idx.empty:
+        target_df.loc[fallback_idx, col] = source_by_current_year.loc[fallback_idx]
+
+    if not still_missing.empty:
+        logger.warning(
+            "Could not match %d %s entries to previous horizon (even after year fallback).",
+            len(still_missing),
+            warn_label,
+        )
+
+
 def add_brownfield(
     n,
     n_p,
@@ -57,7 +96,14 @@ def add_brownfield(
     # electric transmission grid set optimised capacities of previous as minimum
     n.lines.s_nom_min = n_p.lines.s_nom_opt
     dc_i = n.links[n.links.carrier == "DC"].index
-    n.links.loc[dc_i, "p_nom_min"] = n_p.links.loc[dc_i, "p_nom_opt"]
+    _set_series_by_index_with_year_fallback(
+        n.links,
+        dc_i,
+        "p_nom_min",
+        n_p.links.loc[n_p.links.carrier == "DC", "p_nom_opt"],
+        year,
+        "DC link",
+    )
 
     for c in n_p.iterate_components(["Link", "Generator", "Store"]):
         attr = "e" if c.name == "Store" else "p"
@@ -266,15 +312,13 @@ def update_heat_pump_efficiency(n: pypsa.Network, n_p: pypsa.Network, year: int)
     # get names of heat pumps in previous iteration that cannot be replaced by direct utilisation in this iteration
     heat_pump_idx_previous_iteration = n_p.links.index[
         n_p.links.index.str.contains("heat pump")
-        & n_p.links.index.str[:-4].isin(
-            n.links_t.efficiency.columns.str.rstrip(  # sources that can be directly used are no longer represented by heat pumps in the dynamic efficiency dataframe
-                str(year)
-            )
+        & _replace_trailing_year(n_p.links.index, year).isin(
+            n.links_t.efficiency.columns  # sources that can be directly used are no longer represented by heat pumps in the dynamic efficiency dataframe
         )
     ]
     # construct names of same-technology heat pumps in the current iteration
-    corresponding_idx_this_iteration = heat_pump_idx_previous_iteration.str[:-4] + str(
-        year
+    corresponding_idx_this_iteration = _replace_trailing_year(
+        heat_pump_idx_previous_iteration, year
     )
     # update efficiency of heat pumps in previous iteration in-place to efficiency in this iteration
     n_p.links_t["efficiency"].loc[:, heat_pump_idx_previous_iteration] = (
@@ -318,9 +362,9 @@ def update_dynamic_ptes_capacity(
         n_p.stores.index.str.contains("water pits")
     ]
     # construct names of same-technology dynamic pit storage in the current iteration
-    corresponding_idx_this_iteration = dynamic_ptes_idx_previous_iteration.str[
-        :-4
-    ] + str(year)
+    corresponding_idx_this_iteration = _replace_trailing_year(
+        dynamic_ptes_idx_previous_iteration, year
+    )
     # update pit storage capacity in previous iteration in-place to capacity in this iteration
     n_p.stores_t.e_max_pu[dynamic_ptes_idx_previous_iteration] = n.stores_t.e_max_pu[
         corresponding_idx_this_iteration

@@ -43,7 +43,7 @@ def _load_runtime() -> tuple[dict, Path]:
         return cfg, output_path
 
     # Local fallback for direct execution in development.
-    cfg_path = Path(__file__).resolve().parent / "config.ian_2026.yaml"
+    cfg_path = Path(__file__).resolve().parent / "config.default.yaml"
     with cfg_path.open() as f:
         cfg = yaml.safe_load(f)
 

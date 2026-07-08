@@ -25,6 +25,7 @@ Description
 """
 
 import logging
+from numbers import Integral
 
 import numpy as np
 import pandas as pd
@@ -49,6 +50,17 @@ else:
 idx = pd.IndexSlice
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_SCARCITY_CARRIERS = [
+    "solar",
+    "solar rooftop",
+    "solar-hsat",
+    "onwind",
+    "offwind",
+    "offwind-ac",
+    "offwind-dc",
+    "offwind-float",
+]
 
 
 def modify_attribute(n, adjustments, investment_year, modification="factor"):
@@ -83,11 +95,168 @@ def modify_attribute(n, adjustments, investment_year, modification="factor"):
                     )
 
 
+def _resolve_scarcity_value(value, investment_year=None):
+    if isinstance(value, dict) and all(isinstance(k, Integral) for k in value):
+        if investment_year is None:
+            first_year = min(value)
+            logger.warning(
+                "Renewable scarcity adjustment received year-dependent values "
+                "without an investment year. Using the earliest entry %s.",
+                first_year,
+            )
+            return value[first_year]
+        return get(value, investment_year)
+    return value
+
+
+def _resolve_scarcity_factor(factor_config, carrier, investment_year=None):
+    if not isinstance(factor_config, dict):
+        return factor_config
+
+    if carrier in factor_config:
+        return _resolve_scarcity_value(factor_config[carrier], investment_year)
+
+    if all(isinstance(k, Integral) for k in factor_config):
+        return _resolve_scarcity_value(factor_config, investment_year)
+
+    return 1.0
+
+
+def _select_high_demand_winter_window(load, duration_days, winter_months):
+    if load.empty:
+        return pd.DatetimeIndex([])
+
+    winter_load = load[load.index.month.isin(winter_months)].sort_index()
+    if winter_load.empty:
+        logger.warning(
+            "No load snapshots found in winter months %s for renewable scarcity adjustment.",
+            winter_months,
+        )
+        return pd.DatetimeIndex([])
+
+    if len(winter_load.index) < 2:
+        logger.warning(
+            "At least two snapshots are required to determine a renewable scarcity window."
+        )
+        return pd.DatetimeIndex([])
+
+    snapshot_step = winter_load.index.to_series().diff().dropna().median()
+    if pd.isna(snapshot_step) or snapshot_step <= pd.Timedelta(0):
+        logger.warning(
+            "Could not infer a positive snapshot resolution for renewable scarcity adjustment."
+        )
+        return pd.DatetimeIndex([])
+
+    window_size = max(int(pd.Timedelta(days=duration_days) / snapshot_step), 1)
+    if window_size > len(winter_load):
+        logger.warning(
+            "Scarcity window of %s days exceeds winter snapshot count. "
+            "Applying adjustment to all winter snapshots.",
+            duration_days,
+        )
+        return winter_load.index
+
+    rolling_load = winter_load.rolling(
+        window=window_size, min_periods=window_size
+    ).mean()
+    window_end = rolling_load.idxmax()
+
+    if pd.isna(window_end):
+        logger.warning(
+            "Failed to determine a high-demand winter window for renewable "
+            "scarcity adjustment."
+        )
+        return pd.DatetimeIndex([])
+
+    end_loc = winter_load.index.get_loc(window_end)
+    start_loc = end_loc - window_size + 1
+    return winter_load.index[start_loc : end_loc + 1]
+
+
+def apply_renewable_scarcity_period(n, scarcity_config, investment_year=None):
+    if not scarcity_config or not scarcity_config.get("enable", False):
+        return pd.DatetimeIndex([])
+
+    if n.generators_t.p_max_pu.empty:
+        logger.warning(
+            "No generator p_max_pu profiles found for renewable scarcity adjustment."
+        )
+        return pd.DatetimeIndex([])
+
+    if not isinstance(n.snapshots, pd.DatetimeIndex):
+        logger.warning(
+            "Renewable scarcity adjustment requires a DatetimeIndex of snapshots. Skipping."
+        )
+        return pd.DatetimeIndex([])
+
+    duration_days = int(
+        _resolve_scarcity_value(
+            scarcity_config.get("duration_days", 14), investment_year
+        )
+    )
+    winter_months = scarcity_config.get("winter_months", [12, 1, 2])
+    carriers = scarcity_config.get("carriers", DEFAULT_SCARCITY_CARRIERS)
+    factor_config = scarcity_config.get("factor", 1.0)
+
+    if duration_days <= 0:
+        logger.warning(
+            "Renewable scarcity duration_days must be positive. Received %s.",
+            duration_days,
+        )
+        return pd.DatetimeIndex([])
+
+    total_load = n.loads_t.p_set.sum(axis=1)
+    scarcity_snapshots = _select_high_demand_winter_window(
+        total_load, duration_days, winter_months
+    )
+    if scarcity_snapshots.empty:
+        return scarcity_snapshots
+
+    profile_columns = n.generators_t.p_max_pu.columns
+    selected = n.generators.index[
+        n.generators.carrier.isin(carriers) & n.generators.index.isin(profile_columns)
+    ]
+
+    if selected.empty:
+        logger.warning(
+            "No renewable generators matched carriers %s for scarcity adjustment.",
+            carriers,
+        )
+        return pd.DatetimeIndex([])
+
+    factors = selected.to_series().map(n.generators.carrier).map(
+        lambda carrier: _resolve_scarcity_factor(
+            factor_config, carrier, investment_year
+        )
+    )
+
+    n.generators_t.p_max_pu.loc[scarcity_snapshots, selected] = (
+        n.generators_t.p_max_pu.loc[scarcity_snapshots, selected]
+        .mul(factors, axis=1)
+        .clip(lower=0.0, upper=1.0)
+    )
+
+    logger.info(
+        "Applied renewable scarcity adjustment from %s to %s for %s carrier(s): %s.",
+        scarcity_snapshots[0],
+        scarcity_snapshots[-1],
+        n.generators.loc[selected, "carrier"].nunique(),
+        sorted(n.generators.loc[selected, "carrier"].unique()),
+    )
+
+    return scarcity_snapshots
+
+
 def maybe_adjust_costs_and_potentials(n, adjustments, investment_year=None):
     if not adjustments:
         return
-    for modification in adjustments.keys():
-        modify_attribute(n, adjustments, investment_year, modification)
+    for modification in ("factor", "absolute"):
+        if modification in adjustments:
+            modify_attribute(n, adjustments, investment_year, modification)
+
+    apply_renewable_scarcity_period(
+        n, adjustments.get("renewable_scarcity_period"), investment_year
+    )
 
 
 def add_co2limit(n, co2limit, Nyears=1.0):

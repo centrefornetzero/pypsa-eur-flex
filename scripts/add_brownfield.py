@@ -21,6 +21,7 @@ from scripts._helpers import (
 )
 from scripts.add_electricity import flatten, sanitize_carriers
 from scripts.add_existing_baseyear import add_build_year_to_new_assets
+from scripts.prepare_network import apply_renewable_scarcity_period
 
 logger = logging.getLogger(__name__)
 idx = pd.IndexSlice
@@ -28,6 +29,17 @@ idx = pd.IndexSlice
 
 def _replace_trailing_year(index: pd.Index, year: int) -> pd.Index:
     return index.str.replace(r"-\d{4}$", f"-{year}", regex=True)
+
+
+def _drop_trailing_year(index: pd.Index) -> pd.Index:
+    return index.str.replace(r"-\d{4}$", "", regex=True)
+
+
+def _profile_column_for_generator(index: pd.Index, carrier: str) -> pd.Index:
+    base_index = _drop_trailing_year(index)
+    if carrier == "solar rooftop":
+        return base_index.str.replace(r" solar rooftop$", " solar", regex=True)
+    return base_index
 
 
 def _set_series_by_index_with_year_fallback(
@@ -255,21 +267,33 @@ def disable_grid_expansion_if_limit_hit(n):
 
 def adjust_renewable_profiles(n, input_profiles, params, year):
     """
-    Adjusts renewable profiles according to the renewable technology specified,
-    using the latest year below or equal to the selected year.
-    """
+    Refresh renewable profiles for all current and inherited VRE assets.
 
-    # temporal clustering
+    The brownfield pipeline imports solved assets from the previous planning
+    horizon. Their time series may already include scenario-specific
+    modifications, so this step resets all renewable availability profiles from
+    the raw input datasets before any new scarcity adjustment is applied.
+    """
     dr = get_snapshots(params["snapshots"], params["drop_leap_day"])
     snapshotmaps = (
         pd.Series(dr, index=dr).where(lambda x: x.isin(n.snapshots), pd.NA).ffill()
     )
 
-    for carrier in params["carriers"]:
-        if carrier == "hydro":
+    profile_sources = {
+        carrier: carrier for carrier in params["carriers"] if carrier != "hydro"
+    }
+
+    if "solar rooftop" in n.generators.carrier.unique():
+        profile_sources["solar rooftop"] = "solar"
+
+    for carrier, source_carrier in profile_sources.items():
+        generator_idx = n.generators.index[n.generators.carrier == carrier]
+        if generator_idx.empty:
             continue
 
-        with xr.open_dataset(getattr(input_profiles, "profile_" + carrier)) as ds:
+        with xr.open_dataset(
+            getattr(input_profiles, "profile_" + source_carrier)
+        ) as ds:
             if ds.indexes["bus"].empty or "year" not in ds.indexes:
                 continue
 
@@ -280,13 +304,29 @@ def adjust_renewable_profiles(n, input_profiles, params, year):
             )
 
             p_max_pu = ds["profile"].sel(year=closest_year).to_pandas()
-            p_max_pu.columns = p_max_pu.columns.map(flatten) + f" {carrier}"
+            p_max_pu.columns = p_max_pu.columns.map(flatten) + f" {source_carrier}"
 
             # temporal_clustering
             p_max_pu = p_max_pu.groupby(snapshotmaps).mean()
 
-            # replace renewable time series
-            n.generators_t.p_max_pu.loc[:, p_max_pu.columns] = p_max_pu
+            profile_columns = _profile_column_for_generator(generator_idx, carrier)
+            matched = profile_columns.isin(p_max_pu.columns)
+            target_idx = generator_idx[matched]
+            if target_idx.empty:
+                continue
+
+            refreshed_profiles = p_max_pu.loc[:, profile_columns[matched]].copy()
+            refreshed_profiles.columns = target_idx
+
+            n.generators_t.p_max_pu.loc[:, target_idx] = refreshed_profiles
+
+
+def finalize_renewable_profiles(n, input_profiles, params, adjustments, year):
+    adjustments = adjustments or {}
+    adjust_renewable_profiles(n, input_profiles, params, year)
+    apply_renewable_scarcity_period(
+        n, adjustments.get("renewable_scarcity_period"), year
+    )
 
 
 def update_heat_pump_efficiency(n: pypsa.Network, n_p: pypsa.Network, year: int):
@@ -394,8 +434,6 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
 
-    adjust_renewable_profiles(n, snakemake.input, snakemake.params, year)
-
     add_build_year_to_new_assets(n, year)
 
     n_p = pypsa.Network(snakemake.input.network_p)
@@ -412,6 +450,14 @@ if __name__ == "__main__":
         h2_retrofit=snakemake.params.H2_retrofit,
         h2_retrofit_capacity_per_ch4=snakemake.params.H2_retrofit_capacity_per_CH4,
         capacity_threshold=snakemake.params.threshold_capacity,
+    )
+
+    finalize_renewable_profiles(
+        n,
+        snakemake.input,
+        snakemake.params,
+        snakemake.params.adjustments,
+        year,
     )
 
     disable_grid_expansion_if_limit_hit(n)

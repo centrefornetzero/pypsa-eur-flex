@@ -66,6 +66,7 @@ def input_profile_tech_brownfield(w):
 
 rule add_brownfield:
     params:
+        adjustments=config_provider("adjustments", "sector"),
         H2_retrofit=config_provider("sector", "H2_retrofit"),
         H2_retrofit_capacity_per_CH4=config_provider(
             "sector", "H2_retrofit_capacity_per_CH4"

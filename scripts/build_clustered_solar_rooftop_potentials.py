@@ -36,6 +36,7 @@ if __name__ == "__main__":
 
     # add max solar rooftop potential assuming 0.1 kW/m2 and 20 m2/person,
     # i.e. 2 kW/person (population data is in thousands of people) so we get MW
-    potentials = 0.1 * 20 * pd.Series(pop, index=class_regions.index)
+    # assume adoption of only 25% of the potential
+    potentials = 0.25 * 0.1 * 20 * pd.Series(pop, index=class_regions.index)
 
     potentials.to_csv(snakemake.output.potentials)

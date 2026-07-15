@@ -3,12 +3,24 @@ adjustments,,,
 -- electricity,bool or dict,,Parameter adjustments applied in :mod:`prepare_network.`
 -- -- factor,,,Multiply original value with given factor
 -- -- absolute,,,Set attribute to absolute value
+-- -- renewable_scarcity_period,,bool or dict,"Modify renewable per-unit availability (``generators_t.p_max_pu``) during an automatically selected high-demand winter window."
+-- -- -- enable,bool,"{true, false}",Activate the renewable scarcity adjustment.
+-- -- -- carriers,list,Any subset of variable renewable carriers,Carriers whose availability should be scaled during the scarcity window.
+-- -- -- factor,float or dict,per-unit,"Availability scaling factor. Can be one scalar for all carriers, a per-carrier mapping, or a planning-horizon dictionary for sector runs."
+-- -- -- duration_days,int,days,Length of the scarcity window in days.
+-- -- -- winter_months,list,Integers in [1,12],Months considered when searching for the high-demand winter window.
 -- -- -- {component},,,PyPSA component in :mod:`prepare_network.`
 -- -- -- -- {carrier},,,Any carrier of the network to which parameter adjustment factor should be applied.
 -- -- -- --  -- {attr},float,per-unit,Attribute to which parameter adjustment factor should be applied.
 -- sector,bool or dict,,Parameter adjustments applied in :mod:`prepare_sector_network.`
 -- -- factor,,,Multiply original value with given factor
 -- -- absolute,,,Set attribute to absolute value
+-- -- renewable_scarcity_period,,bool or dict,"Modify renewable per-unit availability (``generators_t.p_max_pu``) during an automatically selected high-demand winter window."
+-- -- -- enable,bool,"{true, false}",Activate the renewable scarcity adjustment.
+-- -- -- carriers,list,Any subset of variable renewable carriers,Carriers whose availability should be scaled during the scarcity window.
+-- -- -- factor,float or dict,per-unit,"Availability scaling factor. Can be one scalar for all carriers, a per-carrier mapping, or a planning-horizon dictionary for sector runs."
+-- -- -- duration_days,int,days,Length of the scarcity window in days.
+-- -- -- winter_months,list,Integers in [1,12],Months considered when searching for the high-demand winter window.
 -- -- -- {component},,,PyPSA component in :mod:`prepare_network.`
 -- -- -- -- {carrier},,,Any carrier of the network to which parameter adjustment factor should be applied.
 -- -- -- --  -- {attr},Float or dict,per-unit,Attribute to which parameter adjustment factor should be applied. Can be also a dictionary with planning horizons as keys.

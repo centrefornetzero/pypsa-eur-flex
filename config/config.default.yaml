@@ -980,13 +980,17 @@ clustering:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
-  electricity: false
+  electricity:
+    factor: false
+    absolute: false
+    renewable_scarcity_period: false
   sector:
     factor:
       Link:
         electricity distribution grid:
           capital_cost: 1.0
     absolute: false
+    renewable_scarcity_period: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:

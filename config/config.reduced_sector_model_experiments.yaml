@@ -108,6 +108,27 @@ snapshots:
 clustering:
   temporal:
     resolution_sector: 2H
+
+adjustments:
+  sector:
+    factor:
+      Link:
+        electricity distribution grid:
+          capital_cost: 1.0
+    absolute: false
+    renewable_scarcity_period:
+      enable: true
+      carriers: [solar, solar rooftop, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float]
+      factor:
+        solar: 0.5
+        solar rooftop: 0.5
+        solar-hsat: 0.5
+        onwind: 0.3
+        offwind-ac: 0.3
+        offwind-dc: 0.3
+        offwind-float: 0.3
+      duration_days: 14
+      winter_months: [12, 1, 2]
   
 solving:
   solver_options:

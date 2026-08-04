@@ -34,7 +34,7 @@ baseline__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-baseline__flex100_bev_dsm_v2g:
+baseline__flex100_bev_dsm_v2g_fixed:
   scenario:
     planning_horizons:
     - 2025
@@ -45,7 +45,6 @@ baseline__flex100_bev_dsm_v2g:
     bev_dsm: true
     bev_dsm_availability: 1.0
     v2g: true
-    v2g_availability: 1.0
 tx_v1p5__flex00_no_bev_flex:
   scenario:
     planning_horizons:
@@ -88,7 +87,7 @@ tx_v1p5__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-tx_v1p5__flex100_bev_dsm_v2g:
+tx_v1p5__flex100_bev_dsm_v2g_fixed:
   scenario:
     planning_horizons:
     - 2025
@@ -101,7 +100,6 @@ tx_v1p5__flex100_bev_dsm_v2g:
     bev_dsm: true
     bev_dsm_availability: 1.0
     v2g: true
-    v2g_availability: 1.0
 no_h2__flex00_no_bev_flex:
   scenario:
     planning_horizons:
@@ -144,7 +142,7 @@ no_h2__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-no_h2__flex100_bev_dsm_v2g:
+no_h2__flex100_bev_dsm_v2g_fixed:
   scenario:
     planning_horizons:
     - 2025
@@ -157,7 +155,6 @@ no_h2__flex100_bev_dsm_v2g:
     bev_dsm: true
     bev_dsm_availability: 1.0
     v2g: true
-    v2g_availability: 1.0
 no_ccus__flex00_no_bev_flex:
   scenario:
     planning_horizons:
@@ -197,7 +194,7 @@ no_ccus__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-no_ccus__flex100_bev_dsm_v2g:
+no_ccus__flex100_bev_dsm_v2g_fixed:
   scenario:
     planning_horizons:
     - 2025
@@ -209,7 +206,6 @@ no_ccus__flex100_bev_dsm_v2g:
     bev_dsm: true
     bev_dsm_availability: 1.0
     v2g: true
-    v2g_availability: 1.0
 no_h2_no_ccus__flex00_no_bev_flex:
   scenario:
     planning_horizons:
@@ -255,7 +251,7 @@ no_h2_no_ccus__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-no_h2_no_ccus__flex100_bev_dsm_v2g:
+no_h2_no_ccus__flex100_bev_dsm_v2g_fixed:
   scenario:
     planning_horizons:
     - 2025
@@ -269,4 +265,3 @@ no_h2_no_ccus__flex100_bev_dsm_v2g:
     bev_dsm: true
     bev_dsm_availability: 1.0
     v2g: true
-    v2g_availability: 1.0

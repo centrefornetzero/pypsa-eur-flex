@@ -57,12 +57,11 @@ experiment_orchestrator:
         bev_dsm_availability: 1.0
         v2g: false
         v2g_availability: 0.0
-    flex100_bev_dsm_v2g:
+    flex100_bev_dsm_v2g_fixed:
       sector:
         bev_dsm: true
         bev_dsm_availability: 1.0
         v2g: true
-        v2g_availability: 1.0
   policy_scenarios:
     baseline: {}
     tx_v1p5:

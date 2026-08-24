@@ -34,7 +34,7 @@ baseline__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-baseline__flex100_bev_dsm_v2g_fixed:
+baseline__flex100_bev_dsm_v2g:
   scenario:
     planning_horizons:
     - 2025
@@ -87,7 +87,7 @@ tx_v1p5__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-tx_v1p5__flex100_bev_dsm_v2g_fixed:
+tx_v1p5__flex100_bev_dsm_v2g:
   scenario:
     planning_horizons:
     - 2025
@@ -142,7 +142,7 @@ no_h2__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-no_h2__flex100_bev_dsm_v2g_fixed:
+no_h2__flex100_bev_dsm_v2g:
   scenario:
     planning_horizons:
     - 2025
@@ -194,7 +194,7 @@ no_ccus__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-no_ccus__flex100_bev_dsm_v2g_fixed:
+no_ccus__flex100_bev_dsm_v2g:
   scenario:
     planning_horizons:
     - 2025
@@ -251,7 +251,7 @@ no_h2_no_ccus__flex100_bev_dsm:
     bev_dsm_availability: 1.0
     v2g: false
     v2g_availability: 0.0
-no_h2_no_ccus__flex100_bev_dsm_v2g_fixed:
+no_h2_no_ccus__flex100_bev_dsm_v2g:
   scenario:
     planning_horizons:
     - 2025

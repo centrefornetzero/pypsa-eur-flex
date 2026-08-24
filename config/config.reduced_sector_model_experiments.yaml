@@ -14,7 +14,7 @@ private:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "multi_experiment_results"
+  prefix: "GB_fixed_results"
   name: all
   scenarios:
     enable: true
@@ -57,7 +57,7 @@ experiment_orchestrator:
         bev_dsm_availability: 1.0
         v2g: false
         v2g_availability: 0.0
-    flex100_bev_dsm_v2g_fixed:
+    flex100_bev_dsm_v2g:
       sector:
         bev_dsm: true
         bev_dsm_availability: 1.0
@@ -79,6 +79,13 @@ experiment_orchestrator:
         hydrogen_fuel_cell: false
         hydrogen_turbine: false
         dac: false
+    # no_h2_no_ccus_tx_v1p5:
+    #   electricity:
+    #     transmission_limit: v1.5
+    #   sector:
+    #     hydrogen_fuel_cell: false
+    #     hydrogen_turbine: false
+    #     dac: false
 
 ##################### NOTE #############################################
 # Everything below here is a default value. If duplicate params exist here
@@ -282,7 +289,7 @@ sector:
   v2g: false
   v2g_availability:
     2020: 0
-    2025: 0.08
+    2025: 0 # Zero V2G in 2025 to match reality.
     2030: 0.15
     2040: 0.35
     2050: 0.8
@@ -364,33 +371,3 @@ sector:
   conventional_generation:
     coal: coal
     lignite: lignite
-
-plotting:
-  balance_timeseries:
-    carriers: [H2, co2 stored]
-  heatmap_timeseries:
-    marginal_price: [AC, H2, co2 stored, urban central heat]
-    utilisation_rate:
-    - solar
-    - solar rooftop
-    - solar-hsat
-    - onwind
-    - offwind-dc
-    - offwind-ac
-    - offwind-float
-    - ror
-    - hydro
-    - PHS
-    - battery charger
-    - battery discharger
-    - H2 Electrolysis
-    - H2 Fuel Cell
-    - H2 turbine
-    - urban central air heat pump
-    - urban decentral air heat pump
-    - rural air heat pump
-    - rural ground heat pump
-    - DAC
-    soc: [battery, H2 Store, co2 stored]
-  balance_map:
-    bus_carriers: [AC, H2, co2 stored]

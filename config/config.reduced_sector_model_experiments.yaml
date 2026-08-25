@@ -45,12 +45,12 @@ experiment_orchestrator:
         bev_dsm_availability: 0.0
         v2g: false
         v2g_availability: 0.0
-    flex30_bev_dsm:
-      sector:
-        bev_dsm: true
-        bev_dsm_availability: 0.3
-        v2g: false
-        v2g_availability: 0.0
+    # flex30_bev_dsm:
+    #   sector:
+    #     bev_dsm: true
+    #     bev_dsm_availability: 0.3
+    #     v2g: false
+    #     v2g_availability: 0.0
     flex100_bev_dsm:
       sector:
         bev_dsm: true
@@ -62,30 +62,39 @@ experiment_orchestrator:
         bev_dsm: true
         bev_dsm_availability: 1.0
         v2g: true
+    # flex100_bev_dsm_v2g_relaxed_constraints:
+    #   sector:
+    #     bev_dsm: true
+    #     bev_dsm_availability: 1.0
+    #     v2g: true
+    #   adjustments:
+    #     sector:
+    #       renewable_scarcity_period:
+    #         relax_bev_dsm_restriction: true
   policy_scenarios:
-    baseline: {}
-    tx_v1p5:
-      electricity:
-        transmission_limit: v1.5
-    no_h2:
-      sector:
-        hydrogen_fuel_cell: false
-        hydrogen_turbine: false
-    no_ccus:
-      sector:
-        dac: false
-    no_h2_no_ccus:
-      sector:
-        hydrogen_fuel_cell: false
-        hydrogen_turbine: false
-        dac: false
-    # no_h2_no_ccus_tx_v1p5:
+    #baseline: {}
+    # tx_v1p5:
     #   electricity:
     #     transmission_limit: v1.5
+    # no_h2:
+    #   sector:
+    #     hydrogen_fuel_cell: false
+    #     hydrogen_turbine: false
+    # no_ccus:
+    #   sector:
+    #     dac: false
+    # no_h2_no_ccus:
     #   sector:
     #     hydrogen_fuel_cell: false
     #     hydrogen_turbine: false
     #     dac: false
+    no_h2_no_ccus_tx_v1p5:
+      electricity:
+        transmission_limit: v1.5
+      sector:
+        hydrogen_fuel_cell: false
+        hydrogen_turbine: false
+        dac: false
 
 ##################### NOTE #############################################
 # Everything below here is a default value. If duplicate params exist here
@@ -124,6 +133,7 @@ adjustments:
     absolute: false
     renewable_scarcity_period:
       enable: true
+      relax_bev_dsm_restriction: false 
       carriers: [solar, solar rooftop, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float]
       factor:
         solar: 0.5

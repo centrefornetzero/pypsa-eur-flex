@@ -990,7 +990,10 @@ adjustments:
         electricity distribution grid:
           capital_cost: 1.0
     absolute: false
-    renewable_scarcity_period: false
+    # renewable_scarcity_period: false
+    renewable_scarcity_period:
+      enable: false
+      relax_bev_dsm_restriction: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:

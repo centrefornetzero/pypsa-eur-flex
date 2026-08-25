@@ -44,7 +44,10 @@ from scripts.build_energy_totals import (
 from scripts.build_transport_demand import transport_degree_factor
 from scripts.definitions.heat_sector import HeatSector
 from scripts.definitions.heat_system import HeatSystem
-from scripts.prepare_network import maybe_adjust_costs_and_potentials
+from scripts.prepare_network import (
+    maybe_adjust_costs_and_potentials,
+    relax_bev_dsm_restriction,
+)
 
 spatial = SimpleNamespace()
 logger = logging.getLogger(__name__)
@@ -6669,9 +6672,16 @@ if __name__ == "__main__":
     if options["cluster_heat_buses"] and not first_year_myopic:
         cluster_heat_buses(n)
 
-    maybe_adjust_costs_and_potentials(
-        n, snakemake.params["adjustments"], investment_year
+    adjustments = snakemake.params["adjustments"]
+    scarcity_snapshots = maybe_adjust_costs_and_potentials(
+        n, adjustments, investment_year
     )
+    if adjustments:
+        relax_bev_dsm_restriction(
+            n,
+            adjustments.get("renewable_scarcity_period"),
+            scarcity_snapshots,
+        )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 

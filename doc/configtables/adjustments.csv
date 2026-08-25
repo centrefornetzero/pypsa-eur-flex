@@ -17,6 +17,7 @@ adjustments,,,
 -- -- absolute,,,Set attribute to absolute value
 -- -- renewable_scarcity_period,,bool or dict,"Modify renewable per-unit availability (``generators_t.p_max_pu``) during an automatically selected high-demand winter window."
 -- -- -- enable,bool,"{true, false}",Activate the renewable scarcity adjustment.
+-- -- -- relax_bev_dsm_restriction,bool,"{true, false}","Set BEV battery minimum state of charge (``stores_t.e_min_pu``) to zero during the selected scarcity window."
 -- -- -- carriers,list,Any subset of variable renewable carriers,Carriers whose availability should be scaled during the scarcity window.
 -- -- -- factor,float or dict,per-unit,"Availability scaling factor. Can be one scalar for all carriers, a per-carrier mapping, or a planning-horizon dictionary for sector runs."
 -- -- -- duration_days,int,days,Length of the scarcity window in days.

@@ -247,14 +247,58 @@ def apply_renewable_scarcity_period(n, scarcity_config, investment_year=None):
     return scarcity_snapshots
 
 
+def relax_bev_dsm_restriction(n, scarcity_config, scarcity_snapshots):
+    if scarcity_snapshots.empty or not scarcity_config:
+        return
+
+    if not scarcity_config.get("enable", False) or not scarcity_config.get(
+        "relax_bev_dsm_restriction", False
+    ):
+        return
+
+    if n.stores_t.e_min_pu.empty:
+        logger.warning(
+            "Requested BEV DSM relaxation during renewable scarcity period, "
+            "but no store e_min_pu profiles were found."
+        )
+        return
+
+    ev_stores = n.stores.index[n.stores.carrier == "EV battery"].intersection(
+        n.stores_t.e_min_pu.columns
+    )
+    if ev_stores.empty:
+        logger.warning(
+            "Requested BEV DSM relaxation during renewable scarcity period, "
+            "but no EV battery store e_min_pu profiles were found."
+        )
+        return
+
+    target_snapshots = n.stores_t.e_min_pu.index.intersection(scarcity_snapshots)
+    if target_snapshots.empty:
+        logger.warning(
+            "Requested BEV DSM relaxation during renewable scarcity period, "
+            "but no matching store snapshots were found."
+        )
+        return
+
+    n.stores_t.e_min_pu.loc[target_snapshots, ev_stores] = 0.0
+
+    logger.info(
+        "Relaxed BEV DSM minimum SOC from %s to %s for %s EV battery store(s).",
+        target_snapshots[0],
+        target_snapshots[-1],
+        len(ev_stores),
+    )
+
+
 def maybe_adjust_costs_and_potentials(n, adjustments, investment_year=None):
     if not adjustments:
-        return
+        return pd.DatetimeIndex([])
     for modification in ("factor", "absolute"):
         if modification in adjustments:
             modify_attribute(n, adjustments, investment_year, modification)
 
-    apply_renewable_scarcity_period(
+    return apply_renewable_scarcity_period(
         n, adjustments.get("renewable_scarcity_period"), investment_year
     )
 

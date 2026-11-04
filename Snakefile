@@ -79,73 +79,36 @@ if config["foresight"] == "perfect":
     include: "rules/solve_perfect.smk"
 
 
+def final_outputs(w):
+    if config_provider("foresight")(w) == "perfect":
+        return expand(
+            [
+                RESULTS
+                + "networks/base_s_{clusters}_{opts}_{sector_opts}_brownfield_all_years.nc",
+                RESULTS
+                + "configs/config.base_s_{clusters}_{opts}_{sector_opts}_brownfield_all_years.yaml",
+            ],
+            run=config["run"]["name"],
+            clusters=config_provider("scenario", "clusters")(w),
+            opts=config_provider("scenario", "opts")(w),
+            sector_opts=config_provider("scenario", "sector_opts")(w),
+        )
+
+    return expand(
+        [
+            RESULTS
+            + "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            RESULTS
+            + "configs/config.base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.yaml",
+        ],
+        run=config["run"]["name"],
+        **config["scenario"],
+    )
+
+
 rule all:
     input:
-        expand(RESULTS + "graphs/costs.svg", run=config["run"]["name"]),
-        expand(
-            resources("maps/power-network-s-{clusters}.pdf"),
-            run=config["run"]["name"],
-            **config["scenario"],
-        ),
-        expand(
-            RESULTS
-            + "maps/base_s_{clusters}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
-            run=config["run"]["name"],
-            **config["scenario"],
-        ),
-        lambda w: expand(
-            (
-                RESULTS
-                + "maps/base_s_{clusters}_{opts}_{sector_opts}-h2_network_{planning_horizons}.pdf"
-                if config_provider("sector", "H2_network")(w)
-                else []
-            ),
-            run=config["run"]["name"],
-            **config["scenario"],
-        ),
-        lambda w: expand(
-            (
-                RESULTS
-                + "maps/base_s_{clusters}_{opts}_{sector_opts}-ch4_network_{planning_horizons}.pdf"
-                if config_provider("sector", "gas_network")(w)
-                else []
-            ),
-            run=config["run"]["name"],
-            **config["scenario"],
-        ),
-        lambda w: expand(
-            (
-                RESULTS + "csvs/cumulative_costs.csv"
-                if config_provider("foresight")(w) == "myopic"
-                else []
-            ),
-            run=config["run"]["name"],
-        ),
-        lambda w: expand(
-            (
-                RESULTS
-                + "maps/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}-balance_map_{carrier}.pdf"
-            ),
-            **config["scenario"],
-            run=config["run"]["name"],
-            carrier=config_provider("plotting", "balance_map", "bus_carriers")(w),
-        ),
-        directory(
-            expand(
-                RESULTS
-                + "graphics/balance_timeseries/s_{clusters}_{opts}_{sector_opts}_{planning_horizons}",
-                run=config["run"]["name"],
-                **config["scenario"],
-            ),
-        ),
-        directory(
-            expand(
-                RESULTS
-                + "graphics/heatmap_timeseries/s_{clusters}_{opts}_{sector_opts}_{planning_horizons}",
-                run=config["run"]["name"],
-                **config["scenario"],
-            ),
-        ),
+        final_outputs
     default_target: True
 
 

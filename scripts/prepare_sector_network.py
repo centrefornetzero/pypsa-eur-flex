@@ -44,7 +44,10 @@ from scripts.build_energy_totals import (
 from scripts.build_transport_demand import transport_degree_factor
 from scripts.definitions.heat_sector import HeatSector
 from scripts.definitions.heat_system import HeatSystem
-from scripts.prepare_network import maybe_adjust_costs_and_potentials
+from scripts.prepare_network import (
+    maybe_adjust_costs_and_potentials,
+    relax_bev_dsm_restriction,
+)
 
 spatial = SimpleNamespace()
 logger = logging.getLogger(__name__)
@@ -2348,37 +2351,60 @@ def add_EVs(
     # Calculate load profile
     profile = electric_share * p_set.div(efficiency)
 
-    # Add EV load
-    n.add(
-        "Load",
-        spatial.nodes,
-        suffix=" land transport EV",
-        bus=spatial.nodes + " EV battery",
-        carrier="land transport EV",
-        p_set=profile.loc[n.snapshots],
-    )
-
-    # Add BEV chargers
     p_nom = number_cars * options["bev_charge_rate"] * electric_share
-    n.add(
-        "Link",
-        spatial.nodes,
-        suffix=" BEV charger",
-        bus0=spatial.nodes,
-        bus1=spatial.nodes + " EV battery",
-        p_nom=p_nom,
-        carrier="BEV charger",
-        p_max_pu=avail_profile.loc[n.snapshots, spatial.nodes],
-        lifetime=1,
-        efficiency=options["bev_charge_efficiency"],
-    )
 
     # Add demand-side management components if enabled
+    if options["bev_dsm"]:
+        dsm_share = options["bev_dsm_availability"]
+        n.add(
+            "Bus",
+            spatial.nodes,
+            suffix=" EV battery inflexible",
+            location=spatial.nodes,
+            carrier="EV battery",
+            unit="MWh_el",
+        )
+
+        branches = [
+            (" EV battery", " land transport EV flexible", " BEV charger", dsm_share),
+            (
+                " EV battery inflexible",
+                " land transport EV inflexible",
+                " BEV charger inflexible",
+                1 - dsm_share,
+            ),
+        ]
+    else:
+        branches = [(" EV battery", " land transport EV", " BEV charger", 1.0)]
+
+    for bus_suffix, load_suffix, charger_suffix, fleet_share in branches:
+        n.add(
+            "Load",
+            spatial.nodes,
+            suffix=load_suffix,
+            bus=spatial.nodes + bus_suffix,
+            carrier="land transport EV",
+            p_set=(profile * fleet_share).loc[n.snapshots],
+        )
+
+        n.add(
+            "Link",
+            spatial.nodes,
+            suffix=charger_suffix,
+            bus0=spatial.nodes,
+            bus1=spatial.nodes + bus_suffix,
+            p_nom=p_nom * fleet_share,
+            carrier="BEV charger",
+            p_max_pu=avail_profile.loc[n.snapshots, spatial.nodes],
+            lifetime=1,
+            efficiency=options["bev_charge_efficiency"],
+        )
+
     if options["bev_dsm"]:
         e_nom = (
             number_cars
             * options["bev_energy"]
-            * options["bev_dsm_availability"]
+            * dsm_share
             * electric_share
         )
 
@@ -2409,7 +2435,7 @@ def add_EVs(
                 suffix=" V2G",
                 bus1=spatial.nodes,
                 bus0=spatial.nodes + " EV battery",
-                p_nom=p_nom * get(v2g_availability, investment_year),
+                p_nom=p_nom * dsm_share * get(v2g_availability, investment_year),
                 carrier="V2G",
                 p_max_pu=avail_profile.loc[n.snapshots, spatial.nodes],
                 lifetime=1,
@@ -6669,9 +6695,16 @@ if __name__ == "__main__":
     if options["cluster_heat_buses"] and not first_year_myopic:
         cluster_heat_buses(n)
 
-    maybe_adjust_costs_and_potentials(
-        n, snakemake.params["adjustments"], investment_year
+    adjustments = snakemake.params["adjustments"]
+    scarcity_snapshots = maybe_adjust_costs_and_potentials(
+        n, adjustments, investment_year
     )
+    if adjustments:
+        relax_bev_dsm_restriction(
+            n,
+            adjustments.get("renewable_scarcity_period"),
+            scarcity_snapshots,
+        )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 

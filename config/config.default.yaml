@@ -573,7 +573,7 @@ sector:
   EV_upper_degree_factor: 0.63
   bev_dsm: true
   bev_dsm_availability: 0.5
-  bev_energy: 0.05
+  bev_energy: 0.08 # 80 KWh battery per vehicle
   bev_charge_efficiency: 0.9
   bev_charge_rate: 0.011
   bev_avail_max: 0.95
@@ -990,7 +990,10 @@ adjustments:
         electricity distribution grid:
           capital_cost: 1.0
     absolute: false
-    renewable_scarcity_period: false
+    # renewable_scarcity_period: false
+    renewable_scarcity_period:
+      enable: false
+      relax_bev_dsm_restriction: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
